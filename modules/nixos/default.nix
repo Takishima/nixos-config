@@ -1,0 +1,21 @@
+{
+  imports = [
+    ./audio.nix
+    ./bluetooth.nix
+    ./desktop-niri.nix
+    ./fan-control.nix
+    ./fonts.nix
+    ./locale.nix
+    ./logitech.nix
+    ./nix.nix
+    ./nix-cache-proxy.nix
+    ./nix-nixbuild.nix
+    ./onepassword.nix
+    ./printing.nix
+    ./secrets.nix
+    ./smartcard.nix
+    ./ssh-server.nix
+    ./user.nix
+    ./virtualisation.nix
+  ];
+}
