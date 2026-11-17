@@ -1,0 +1,5 @@
+{
+  name = "functional-spec";
+  description = "Write a functional specification — what a feature does from the user's point of view, not how it's built — following Joel Spolsky's Painless Functional Specifications method: scenarios with named characters, explicit non-goals, an overview, exhaustive screen-and-error details, open issues closed before coding, and audience-tagged side notes. Enforces the voice rules (be specific and funny, plain words, big picture before detail) and the anti-patterns (spec by committee, spec frozen at kickoff, designing in the programming language, template-filling). Use when asked to write, draft, review, or improve a functional spec, a feature spec, a design doc for user-visible behaviour, or a PRD; when someone asks \"what should this feature actually do?\" before implementation starts; or when a project is about to skip the spec. Architecture and technology decisions belong in an ADR, work items in the issue tracker.";
+  argumentHint = "[feature or product to spec | path to an existing spec to review]";
+}

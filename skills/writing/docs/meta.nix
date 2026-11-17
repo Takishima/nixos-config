@@ -1,0 +1,4 @@
+{
+  name = "docs";
+  description = "Write or edit documentation that serves one purpose for one reader, in plain language, at the shortest length that does the job. Names the document type first (README, tutorial, how-to guide, reference, explanation, agent instructions) and keeps each type to its own scope, so a README stays a front door and never grows into a reference manual. Applies ISO 24495-1 plain-language rules (common words, short sentences, active voice, the point first) and a cut-first concision pass. Use when writing, rewriting, restructuring or reviewing a README, docs/ page, guide, runbook, reference page, ADR or architecture doc, AGENTS.md/CLAUDE.md, or an option description; when a doc has grown too long or mixes purposes; or when asked to make docs clearer, shorter or plainer. For commits, MR descriptions and review comments use `prose`; for functional specs use `functional-spec`.";
+}
