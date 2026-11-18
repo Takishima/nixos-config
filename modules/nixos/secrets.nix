@@ -8,6 +8,34 @@ let
   cfg = config.my.secrets;
   exists = cfg.file != null && builtins.pathExists cfg.file;
   text = if exists then builtins.readFile cfg.file else "";
+
+  valuePaths =
+    let
+      step =
+        acc: line:
+        let
+          m = builtins.match "( *)([^ #:-][^:]*):( .*)?" line;
+          indent = lib.stringLength (lib.elemAt m 0);
+          stack = lib.filter (e: e.indent < indent) acc.stack ++ [
+            {
+              inherit indent;
+              key = lib.elemAt m 1;
+            }
+          ];
+        in
+        if m == null then
+          acc
+        else
+          {
+            inherit stack;
+            paths =
+              acc.paths ++ lib.optional (lib.elemAt m 2 != null) (lib.concatMapStringsSep "/" (e: e.key) stack);
+          };
+    in
+    (lib.foldl' step {
+      stack = [ ];
+      paths = [ ];
+    } (lib.splitString "\n" text)).paths;
 in
 {
   options.my.secrets = {
@@ -32,14 +60,15 @@ in
       type = lib.types.functionTo lib.types.bool;
       readOnly = true;
       description = ''
-        Whether `file` exists and has this top-level key. Modules gate their
-        secret on it, so the system builds before any secret is written.
+        Whether `file` exists and has a value at this key, nested keys written
+        as a sops-nix path (`wifi/home`). Modules gate their secret on it, so
+        the system builds before any secret is written.
       '';
     };
   };
 
   config = {
-    my.secrets.has = name: lib.hasInfix "\n${name}: " "\n${text}";
+    my.secrets.has = name: lib.elem name valuePaths;
 
     sops = {
       defaultSopsFile = lib.mkIf exists cfg.file;
