@@ -8,6 +8,7 @@
     inputs.self.nixosModules.default
     ./disko.nix
     ./hardware-configuration.nix
+    ./wifi.nix
     common-cpu-amd
     common-cpu-amd-pstate
     common-gpu-amd

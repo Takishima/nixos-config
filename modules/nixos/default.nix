@@ -17,5 +17,6 @@
     ./ssh-server.nix
     ./user.nix
     ./virtualisation.nix
+    ./wifi.nix
   ];
 }
