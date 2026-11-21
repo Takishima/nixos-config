@@ -25,7 +25,7 @@ outputs = { self, nixpkgs, ... }: {
   templates.<name>               = { path = ./template; description = "…"; };
   templates.default              = self.templates.<name>;
 
-  formatter.<system>             = pkgs.nixpkgs-fmt;     # or treefmt, alejandra, …
+  formatter.<system>             = pkgs.nixfmt;          # or treefmt, …
 
   checks.<system>.<name>         = derivation;
 };
