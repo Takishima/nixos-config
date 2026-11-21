@@ -170,6 +170,13 @@ After the first boot, clone this repository to `~/code/nix/nixos-config`, where
 ```sh
 nh os switch          # build, show the package diff, activate
 nix flake update      # move every input; name one to move only that
-nix flake check       # build the system, lint, check formatting
+nix flake check       # build the system, lint, check formatting, run the VM tests
 nix fmt               # format with treefmt (nixfmt), see treefmt.nix
+```
+
+The VM tests in `tests/` boot the modules in QEMU; each is a check of its own:
+
+```sh
+nix build .#checks.x86_64-linux.vm-secrets -L                   # run one
+nix run .#checks.x86_64-linux.vm-secrets.driverInteractive      # poke at its VMs
 ```

@@ -124,6 +124,7 @@
           statix check ${self}
           touch $out
         '';
-      };
+      }
+      // import ./tests { inherit self nixpkgs pkgs; };
     };
 }
