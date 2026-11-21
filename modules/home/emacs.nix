@@ -50,11 +50,12 @@ in
       inherit (cfg) package checkout;
       treesitGrammars = true;
       manageElispPackages = true;
+      # Defaults, so a small machine can pick groups under programs.emacs-config.tools.
       tools = {
-        enableAll = true;
+        enableAll = lib.mkDefault true;
         tex.enable = cfg.tex;
-        debuggers.enable = true;
-        fonts.enable = true;
+        debuggers.enable = lib.mkDefault true;
+        fonts.enable = lib.mkDefault true;
       };
     };
 

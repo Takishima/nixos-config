@@ -1,5 +1,5 @@
 {
-  description = "NixOS and home-manager configuration for homelinux";
+  description = "NixOS and home-manager configuration for homelinux and rpizh";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -58,8 +58,11 @@
   outputs =
     { self, nixpkgs, ... }@inputs:
     let
-      system = "x86_64-linux";
       inherit (nixpkgs) lib;
+      forAllSystems = lib.genAttrs [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
 
       # { default, <file name> ... }, each importing `deps` beside its file.
       modulesIn =
@@ -74,17 +77,37 @@
           }
         ) (builtins.readDir dir);
 
-      treefmt = inputs.treefmt-nix.lib.evalModule pkgs ./treefmt.nix;
+      pkgsFor = forAllSystems (
+        system:
+        import nixpkgs {
+          inherit system;
+          config.allowUnfree = true;
+          overlays = [ self.overlays.default ];
+        }
+      );
 
-      pkgs = import nixpkgs {
-        inherit system;
-        overlays = [ self.overlays.default ];
-      };
+      treefmtFor = forAllSystems (
+        system: (inputs.treefmt-nix.lib.evalModule pkgsFor.${system} ./treefmt.nix).config.build
+      );
+
+      rpizh = self.nixosConfigurations.rpizh.config.system.build;
     in
     {
-      nixosConfigurations.homelinux = lib.nixosSystem {
-        specialArgs = { inherit inputs; };
-        modules = [ ./hosts/homelinux ];
+      nixosConfigurations = lib.genAttrs [ "homelinux" "rpizh" ] (
+        host:
+        lib.nixosSystem {
+          specialArgs = { inherit inputs; };
+          modules = [ ./hosts/${host} ];
+        }
+      );
+
+      # The Pi under Raspberry Pi OS; under NixOS its home comes with the system.
+      homeConfigurations."damien@rpizh" = inputs.home-manager.lib.homeManagerConfiguration {
+        pkgs = pkgsFor.aarch64-linux;
+        modules = [
+          self.homeModules.default
+          ./hosts/rpizh/home.nix
+        ];
       };
 
       overlays = import ./overlays { inherit inputs; };
@@ -113,17 +136,31 @@
         ];
       };
 
-      packages.${system} = { inherit (pkgs) sops-host ncro; };
+      packages = forAllSystems (
+        system:
+        {
+          inherit (pkgsFor.${system}) sops-host ncro;
+        }
+        // lib.optionalAttrs (system == "aarch64-linux") { rpizh-sd-image = rpizh.sdImage; }
+      );
 
-      formatter.${system} = treefmt.config.build.wrapper;
+      formatter = forAllSystems (system: treefmtFor.${system}.wrapper);
 
-      checks.${system} = {
-        formatting = treefmt.config.build.check self;
-        toplevel = self.nixosConfigurations.homelinux.config.system.build.toplevel;
-        statix = pkgs.runCommand "statix" { nativeBuildInputs = [ pkgs.statix ]; } ''
-          statix check ${self}
-          touch $out
-        '';
+      checks = {
+        x86_64-linux = {
+          formatting = treefmtFor.x86_64-linux.check self;
+          toplevel = self.nixosConfigurations.homelinux.config.system.build.toplevel;
+          statix =
+            pkgsFor.x86_64-linux.runCommand "statix" { nativeBuildInputs = [ pkgsFor.x86_64-linux.statix ]; }
+              ''
+                statix check ${self}
+                touch $out
+              '';
+        };
+        aarch64-linux = {
+          inherit (rpizh) toplevel;
+          home = self.homeConfigurations."damien@rpizh".activationPackage;
+        };
       };
     };
 }

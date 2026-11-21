@@ -1,16 +1,17 @@
 # nixos-config
 
-NixOS and home-manager for `homelinux` (Ryzen 7 3700X, Radeon RX 5700), in one
-flake. The desktop is niri with Noctalia, on Wayland. Home-manager runs as a
-NixOS module, so one switch updates the system and the home.
+NixOS and home-manager for `homelinux` (Ryzen 7 3700X, Radeon RX 5700) and
+`rpizh` (Raspberry Pi 4), in one flake. On `homelinux` the desktop is niri with
+Noctalia, on Wayland; `rpizh` is headless. Home-manager runs as a NixOS module,
+so one switch updates the system and the home.
 
 ## Layout
 
 | Path | Holds |
 | --- | --- |
-| `flake.nix` | Inputs, the `homelinux` system, exported modules and overlays |
+| `flake.nix` | Inputs, the systems, exported modules and overlays |
 | `default.nix` | The same outputs without flakes |
-| `hosts/homelinux/` | What is true of this machine: disk, hardware, which features are on |
+| `hosts/<host>/` | What is true of that machine: disk, hardware, which features are on |
 | `modules/nixos/` | One module per system feature, each behind a `my.*` option |
 | `modules/home/` | One home-manager module per program or domain, also under `my.*` |
 | `home/damien/` | Damien's values: `default.nix` for every machine, then one file per host |
@@ -164,6 +165,57 @@ theirs; pick between them in the firmware boot menu.
 
 After the first boot, clone this repository to `~/code/nix/nixos-config`, where
 `nh` expects it, and the Emacs configuration to `~/code/emacs/emacs-config`.
+
+## Raspberry Pi
+
+`rpizh` is a Raspberry Pi 4 with a small home: the shell, git, Claude Code and
+a terminal Emacs (`emacs-nox`, a few tool groups, no daemon). The same home,
+`home/damien/rpizh.nix`, serves both ways of running it.
+
+Nothing in Emacs's package set is in cache.nixos.org for aarch64, so the first
+build byte-compiles a couple of hundred packages. On the Pi that takes a long
+while; `homelinux` emulates aarch64 and can build for it instead.
+
+**Under Raspberry Pi OS**, with standalone home-manager. It needs the 64-bit
+system (`uname -m` says `aarch64`) and Nix installed:
+
+```sh
+nix run home-manager -- switch -b hm-backup --flake .#damien@rpizh   # first time
+nh home switch                                                        # afterwards
+```
+
+To build on `homelinux` and send the result over:
+
+```sh
+nix build '.#homeConfigurations."damien@rpizh".activationPackage'
+nix copy --to ssh://rpizh ./result && ssh rpizh "$(readlink result)/activate"
+```
+
+**Under NixOS**, from an SD image. The hardware side is nixos-hardware's
+`raspberry-pi-4`: the Raspberry Pi kernel, the firmware partition with its
+`config.txt` (`hardware.raspberry-pi.configtxt`), and U-Boot, which starts the
+generation picked from `extlinux.conf`. The root partition grows to fill the
+card on first boot.
+
+No cache has that kernel, so it is compiled once per kernel or nixpkgs bump:
+hours on the Pi or under emulation on `homelinux`.
+
+```sh
+nix build .#packages.aarch64-linux.rpizh-sd-image      # on homelinux
+zstd -dc result/sd-image/*.img.zst | sudo dd of=/dev/<card> bs=4M status=progress
+```
+
+Later, to spare the Pi a kernel build, build on `homelinux` and switch remotely:
+
+```sh
+nixos-rebuild switch --flake .#rpizh --target-host rpizh --sudo
+```
+
+Log in over SSH with one of the keys in `hosts/rpizh/default.nix`; the password
+is `changeme` until there is a `password_hash`. For secrets, add the Pi's host
+key to `.sops.yaml` (`ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub`, with a
+rule for `secrets/rpizh.yaml`) and create that file. Wi-Fi then works as on
+`homelinux`, through `my.wifi.networks`; until then the Pi wants a cable.
 
 ## Update
 
