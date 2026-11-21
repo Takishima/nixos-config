@@ -25,12 +25,27 @@ nix eval --json ".#checks.$system" \
   --apply 'checks: builtins.mapAttrs (_: check: check.outPath) checks' >"$work/checks.json"
 toplevel=$(jq -r .toplevel "$work/checks.json")
 
+# `nix flake check` does not fetch a result a cache already has, so a path
+# missing from the store here needs no push.
+valid() {
+  while read -r path; do
+    if nix-store --check-validity "$path" 2>/dev/null; then echo "$path"; fi
+  done
+}
+
 {
-  nix-store --query --requisites "$toplevel" |
-    grep -E "^/nix/store/[a-z0-9]{32}-$allow" || true
+  if [ -n "$(echo "$toplevel" | valid)" ]; then
+    nix-store --query --requisites "$toplevel" |
+      grep -E "^/nix/store/[a-z0-9]{32}-$allow" || true
+  fi
   # The other checks' results, so an unchanged test is not run again.
-  jq -r 'del(.toplevel)[]' "$work/checks.json"
+  jq -r 'del(.toplevel)[]' "$work/checks.json" | valid
 } | sort -u >"$work/roots"
+
+if [ ! -s "$work/roots" ]; then
+  echo "Nothing to push: every result came from a cache."
+  exit 0
+fi
 
 nix eval --json ".#nixosConfigurations.$host.config" --apply "$(cat "$here/unfree-paths.nix")" |
   jq -r '.[]' | sort -u >"$work/unfree"
