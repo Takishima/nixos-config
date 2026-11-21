@@ -43,7 +43,7 @@
     user = {
       name = "damien";
       fullName = "Damien Nguyen";
-      home = ../../home/damien;
+      home = ../../home/damien/homelinux.nix;
     };
 
     secrets.file = ../../secrets/homelinux.yaml;

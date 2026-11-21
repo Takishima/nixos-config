@@ -13,7 +13,7 @@ NixOS module, so one switch updates the system and the home.
 | `hosts/homelinux/` | What is true of this machine: disk, hardware, which features are on |
 | `modules/nixos/` | One module per system feature, each behind a `my.*` option |
 | `modules/home/` | One home-manager module per program or domain, also under `my.*` |
-| `home/damien/` | Damien's values: identity, keys, packages, monitor layout |
+| `home/damien/` | Damien's values: `default.nix` for every machine, then one file per host |
 | `overlays/`, `pkgs/` | Overlays and the packages they add |
 | `skills/` | AI skills, as `<area>/<name>/{meta.nix, body.md, references/}` |
 | `secrets/` | sops files, encrypted for the key in `.sops.yaml` |
