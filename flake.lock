@@ -99,11 +99,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1792745310,
-        "narHash": "sha256-YRZI2IPTzOjWlVnpiYbyMovm9ydwn186Bw6BgTqbk1M=",
+        "lastModified": 1795273900,
+        "narHash": "sha256-oGEmPyg5jlQF7WQT42TaMp7nQz94IsscD+x5H392394=",
         "owner": "takishima",
         "repo": "emacs-config",
-        "rev": "f29159e25607fc28dc21950bd7a7c2dd987b38f0",
+        "rev": "1abb8337adc4e96b11bc4ebbeed39bc9d754c0c6",
         "type": "github"
       },
       "original": {
