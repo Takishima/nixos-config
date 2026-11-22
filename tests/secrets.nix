@@ -1,6 +1,7 @@
 # my.secrets, and the modules gating on it: fixtures/secrets.yaml is encrypted
 # to nixpkgs' test SSH key, standing in for the host key, and holds
 #   password_hash/alice: yescrypt of "sesame"
+# and nothing for bob.
 #   wifi/home: correct-horse-battery
 {
   self,
@@ -23,12 +24,16 @@ in
 
   nodes.machine = {
     imports = [
-      self.nixosModules.user
+      self.nixosModules.users
       self.nixosModules.wifi
     ];
 
+    users.users = {
+      alice.isNormalUser = true;
+      bob.isNormalUser = true;
+    };
+
     my = {
-      user.name = "alice";
       secrets = {
         inherit file;
         sshKeyPath = "${sshKeys.snakeOilEd25519PrivateKey}";
@@ -65,12 +70,17 @@ in
     ''
       machine.wait_for_unit("multi-user.target")
 
-      with subtest("the password comes from the sops file"):
+      with subtest("a user's password comes from the sops file"):
           shadow = machine.succeed("getent shadow alice").split(":")[1]
           assert shadow.startswith("$y$"), shadow
           assert shadow == machine.succeed("cat /run/secrets-for-users/password_hash/alice").strip()
           machine.succeed(f"${checkPassword} sesame '{shadow}'")
           machine.fail(f"${checkPassword} changeme '{shadow}'")
+
+      with subtest("a user without one gets the initial password"):
+          shadow = machine.succeed("getent shadow bob").split(":")[1]
+          machine.succeed(f"${checkPassword} changeme '{shadow}'")
+          machine.fail("test -e /run/secrets-for-users/password_hash/bob")
 
       with subtest("only the network with a password gets a profile"):
           machine.wait_until_succeeds("nmcli -g NAME connection show | grep -qx HomeNet")

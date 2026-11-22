@@ -15,7 +15,7 @@
     ./secrets.nix
     ./smartcard.nix
     ./ssh-server.nix
-    ./user.nix
+    ./users.nix
     ./virtualisation.nix
     ./wifi.nix
   ];

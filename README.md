@@ -24,7 +24,7 @@ both, and the home half follows the system by default: `my.onePassword`,
 
 | System (`modules/nixos`) | |
 | --- | --- |
-| `my.user` | The user and their home-manager module |
+| `users` | Passwords of the `users.users` from sops, home-manager setup |
 | `my.secrets` | sops-nix, decrypting with an SSH key |
 | `my.locale` | Time zone, locales, keyboard layout |
 | `my.nix.cacheProxy` | ncro in front of cache.nixos.org and the cachix caches |
@@ -34,7 +34,7 @@ both, and the home half follows the system by default: `my.onePassword`,
 | `my.printing` | CUPS, and the print queues in `my.printing.printers` |
 | `my.fanControl` | CoolerControl, and the out-of-tree `it87` sensor driver |
 | `my.smartcard` | PC/SC for the ACR1252 reader, YubiKey tools |
-| `my.sshServer` | OpenSSH, key-only, with the user's authorized keys |
+| `my.sshServer` | OpenSSH, key-only |
 | `my.fonts` | The desktop font set and extra fonts |
 | `my.onePassword` | 1Password GUI and CLI |
 | `my.virtualisation` | Docker, libvirt |
@@ -70,7 +70,6 @@ nothing else has to be imported and no `specialArgs` are involved:
         nixos-config.nixosModules.nix-cache-proxy
         {
           my.audio.enable = true;
-          my.user.name = "alice";
           my.nix.cacheProxy.enable = true;
         }
       ];
@@ -88,8 +87,10 @@ nothing else has to be imported and no `specialArgs` are involved:
 | `overlays.claude-code` | `claude-code` from llm-agents.nix, replacing nixpkgs' |
 | `overlays.default` | All of the above |
 
-A module that needs the user (`virtualisation`, `onepassword`, `nix`, ...)
-pulls in `my.user`, which requires `my.user.name`. The NixOS modules apply
+Users are the NixOS and home-manager options, `users.users.<name>` and
+`home-manager.users.<name>`. A module that grants users something takes their
+names: `my.virtualisation.docker.users`, `my.virtualisation.libvirt.users`,
+`my.logitech.users`, `my.onePassword.users`. The NixOS modules apply
 `overlays.default` themselves. With standalone home-manager, add it to the
 `pkgs` you pass; `my.onePassword` and `my.desktop.niri` are then off until set.
 
@@ -128,7 +129,7 @@ The system builds without the file. Each key turns its feature on:
 
 | Key | Effect | Without it |
 | --- | --- | --- |
-| `password_hash/<user>` | Login password of `<user>`, from `mkpasswd -m yescrypt` | The password is `changeme` |
+| `password_hash/<user>` | Login password of the normal user `<user>`, from `mkpasswd -m yescrypt` | The password is `changeme` |
 | `wifi/<name>` | Password of the network `my.wifi.networks.<name>` | No profile for that network |
 | `netrc` | Credentials for private caches, at `/etc/nix/netrc` | Public caches only |
 | `nixbuild_ssh_key` | Private key of the nixbuild.net account | No remote builds |

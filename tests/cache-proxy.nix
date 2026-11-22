@@ -44,18 +44,15 @@ in
     machine = {
       imports = [ self.nixosModules.nix-cache-proxy ];
 
-      my = {
-        user.name = "alice";
-        nix.cacheProxy = {
-          enable = true;
-          upstreams = [
-            {
-              url = "http://upstream";
-              priority = 10;
-              public_key = publicKey;
-            }
-          ];
-        };
+      my.nix.cacheProxy = {
+        enable = true;
+        upstreams = [
+          {
+            url = "http://upstream";
+            priority = 10;
+            public_key = publicKey;
+          }
+        ];
       };
     };
   };
