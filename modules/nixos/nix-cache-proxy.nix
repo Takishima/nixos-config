@@ -35,6 +35,12 @@ in
           public_key = "hx-rh-devel.cachix.org-1:3CQaXpjF25/AVY+vF0ow2JK0fAWyRxEwl8wBbD2DPcE=";
         }
         {
+          # Filled by CI (.github/workflows/check.yml).
+          url = "https://dn-personal.cachix.org";
+          priority = 20;
+          public_key = "dn-personal.cachix.org-1:8pB//y1vrWsFfDo9FebVmnMU3mF9t4bDDxaeQPN88RE=";
+        }
+        {
           url = "https://nix-community.cachix.org";
           priority = 20;
           public_key = "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs=";
