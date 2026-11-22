@@ -17,8 +17,7 @@ jobs:
   flake-check:
     runs-on: ubuntu-latest
     env:
-      # False for pull requests from forks and Dependabot, which get no
-      # secrets: those build on the runner instead.
+      # Fork and Dependabot PRs get no secrets, so they build on the runner.
       HAVE_NIXBUILD: ${{ secrets.NIXBUILD_TOKEN != '' }}
     steps:
       # The desktop closure does not fit in the runner's default free space.
@@ -45,22 +44,18 @@ jobs:
           # unfree packages included, to this public cache.
           skipPush: true
 
-      # Builds everything on nixbuild.net (max-jobs = 0), VM tests included,
-      # and uses its store as a substituter. Results are copied back to the
-      # runner, so push-cache.sh sees them. The token comes from
-      # `tokens create` in `ssh eu.nixbuild.net shell`, with the permissions
-      # build:read, build:write, store:read and store:write. It expires after
-      # 30 days unless created with --ttl-seconds, and CI fails once it does.
+      # Builds everything on nixbuild.net and copies the results back.
+      # CI fails once the token expires. To make a new one, for a year:
+      #   ssh eu.nixbuild.net shell
+      #   tokens create --ttl-seconds 31536000 -p build:read -p build:write -p store:read -p store:write
       - uses: nixbuild/nixbuild-action@v27
         if: env.HAVE_NIXBUILD == 'true'
         with:
           nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
           generate_summary_for: job
 
-      # The Nix daemon connects to nixbuild.net, as root, and sees neither
-      # NIX_SSHOPTS, which names the action's SSH config, nor the
-      # NIXBUILDNET_TOKEN that this config forwards from the environment. So
-      # root gets the config with the token written into it.
+      # The action sets up SSH for the runner user only, but the Nix daemon
+      # connects as root. Copy the SSH config to root, with the token in it.
       - name: Give the Nix daemon access to nixbuild.net
         if: env.HAVE_NIXBUILD == 'true'
         run: |
