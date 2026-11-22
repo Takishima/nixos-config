@@ -10,21 +10,7 @@ let
   inherit (config.my.secrets) has;
   secret = name: "password_hash/${name}";
   normalUsers = lib.attrNames (lib.filterAttrs (_: user: user.isNormalUser) config.users.users);
-
-  # A flat `password_hash` is the layout from before the per-user keys. It can
-  # only be meant for a sole user.
-  hasFlat = has "password_hash";
-  secretOf =
-    name:
-    if has (secret name) then
-      secret name
-    else if hasFlat && normalUsers == [ name ] then
-      "password_hash"
-    else
-      null;
-
-  secrets = lib.filterAttrs (_: key: key != null) (lib.genAttrs normalUsers secretOf);
-  withoutPassword = lib.subtractLists (lib.attrNames secrets) normalUsers;
+  withPassword = lib.filter (name: has (secret name)) normalUsers;
   sopsSecrets = config.sops.secrets;
 in
 {
@@ -35,28 +21,25 @@ in
       lib.types.submodule (
         { name, config, ... }:
         let
-          key = secretOf name;
+          hasPassword = has (secret name);
         in
         {
-          hashedPasswordFile = lib.mkIf (config.isNormalUser && key != null) sopsSecrets.${key}.path;
-          initialPassword = lib.mkIf (config.isNormalUser && key == null) "changeme";
+          hashedPasswordFile = lib.mkIf (config.isNormalUser && hasPassword) sopsSecrets.${secret name}.path;
+          initialPassword = lib.mkIf (config.isNormalUser && !hasPassword) "changeme";
         }
       )
     );
   };
 
   config = {
-    sops.secrets = lib.mapAttrs' (_: key: lib.nameValuePair key { neededForUsers = true; }) secrets;
+    sops.secrets = lib.genAttrs (map secret withPassword) (_: {
+      neededForUsers = true;
+    });
 
-    warnings =
-      map (name: ''
-        No ${secret name} in the sops file: ${name} gets the initial password
-        "changeme". See README.md, "Secrets".
-      '') withoutPassword
-      ++ lib.optional hasFlat ''
-        The sops file has a flat password_hash. Move it to password_hash/<user>.
-        See README.md, "Secrets".
-      '';
+    warnings = map (name: ''
+      No ${secret name} in the sops file: ${name} gets the initial password
+      "changeme". See README.md, "Secrets".
+    '') (lib.subtractLists withPassword normalUsers);
 
     home-manager = {
       useGlobalPkgs = true;
