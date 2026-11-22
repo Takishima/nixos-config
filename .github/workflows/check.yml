@@ -57,6 +57,13 @@ jobs:
           nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
           generate_summary_for: job
 
+      # The action passes its SSH config, with the `nixbuild` host and the
+      # token, in NIX_SSHOPTS, which the Nix daemon does not see. The daemon
+      # is what connects, as root.
+      - name: Give the Nix daemon the nixbuild.net SSH config
+        if: env.HAVE_NIXBUILD == 'true'
+        run: sudo install -D -m 600 "${NIX_SSHOPTS#-F}" /root/.ssh/config
+
       - run: nix flake check -L
 
       # Not for pull requests from forks, which get no token.
