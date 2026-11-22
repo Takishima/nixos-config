@@ -49,7 +49,8 @@ jobs:
       # and uses its store as a substituter. Results are copied back to the
       # runner, so push-cache.sh sees them. The token comes from
       # `tokens create` in `ssh eu.nixbuild.net shell`, with the permissions
-      # build:read, build:write, store:read and store:write.
+      # build:read, build:write, store:read and store:write. It expires after
+      # 30 days unless created with --ttl-seconds, and CI fails once it does.
       - uses: nixbuild/nixbuild-action@v27
         if: env.HAVE_NIXBUILD == 'true'
         with:
