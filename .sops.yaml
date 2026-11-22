@@ -3,8 +3,13 @@
 # sops-nix decrypts with the private half (my.secrets.sshKeyPath).
 keys:
   - &homelinux age1krr8dx7ky2nfcz2a3l7r2qnapa0q6xmljtyd35re7pg2hjk0eqgq0x62ff
+  - &rpizh age1982pmrau0x8vap0x4k705663n4rg2fl4gd0fxltvx4lxw2da5dfqz8vn94
 creation_rules:
   - path_regex: (^|/)secrets/homelinux\.yaml$
     key_groups:
       - age:
           - *homelinux
+  - path_regex: (^|/)secrets/rpizh\.yaml$
+    key_groups:
+      - age:
+          - *rpizh
