@@ -36,6 +36,16 @@ in
       neededForUsers = true;
     });
 
+    assertions = [
+      {
+        assertion = !has "password_hash";
+        message = ''
+          The sops file has a flat password_hash. Passwords are per user: move
+          it to password_hash/<user>. See README.md, "Secrets".
+        '';
+      }
+    ];
+
     warnings = map (name: ''
       No ${secret name} in the sops file: ${name} gets the initial password
       "changeme". See README.md, "Secrets".
