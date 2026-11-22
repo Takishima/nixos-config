@@ -65,7 +65,26 @@ jobs:
           } 1' "${NIX_SSHOPTS#-F}" | sudo install -D -m 600 /dev/stdin /root/.ssh/config
           sudo "$(command -v nix)" store info --store ssh://nixbuild
 
-      - run: nix flake check -L
+      # A pull request builds only the checks whose derivation differs from
+      # the base branch's, so a host it does not change builds nothing.
+      - name: Check the flake
+        env:
+          BASE: github:${{ github.repository }}/${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != pull_request ]; then
+            exec nix flake check -L
+          fi
+          set -o pipefail
+          system=$(nix config show system)
+          drvs() {
+            nix eval --raw "$1#checks.$system" --apply 'checks: builtins.concatStringsSep "\n"
+              (builtins.attrValues (builtins.mapAttrs (name: check: "${name} ${check.drvPath}") checks))' | sort
+          }
+          head=$(drvs .)
+          base=$(drvs "$BASE" || true)
+          changed=$(comm -23 <(echo "$head") <(echo "$base") | sed "s/ .*//; s/^/.#checks.$system./")
+          echo "Changed checks:" $changed
+          if [ -n "$changed" ]; then nix build -L --no-link $changed; fi
 
       # Not for pull requests from forks, which get no token.
       - name: Push to Cachix

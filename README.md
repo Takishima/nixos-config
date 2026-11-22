@@ -179,6 +179,7 @@ After the first boot, clone this repository to `~/code/nix/nixos-config`, where
 nh os switch          # build, show the package diff, activate
 nix flake update      # move every input; name one to move only that
 nix flake check       # build the system, lint, check formatting, run the VM tests
+                      # (CI runs all of it on main, and on a pull request only the checks it changes)
 nix fmt               # format with treefmt (nixfmt), see treefmt.nix
 ```
 
