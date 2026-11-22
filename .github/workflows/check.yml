@@ -14,56 +14,8 @@ permissions:
   contents: read
 
 jobs:
-  # Pull requests build only the checks they change, and so only the hosts
-  # they change. Pushes to main and manual runs build all of them.
-  plan:
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.plan.outputs.matrix }}
-    env:
-      HOSTS: >-
-        [{"system": "x86_64-linux", "host": "homelinux", "runner": "ubuntu-latest"}]
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: cachix/install-nix-action@v31
-        if: github.event_name == 'pull_request'
-
-      # `nix build` of single checks skips what `nix flake check` evaluates
-      # besides them: the modules, overlays and packages.
-      - name: Evaluate the flake
-        if: github.event_name == 'pull_request'
-        run: nix flake check --no-build --all-systems
-
-      - name: Choose the checks
-        id: plan
-        env:
-          BASE: github:${{ github.repository }}/${{ github.event.pull_request.base.sha }}
-        run: |
-          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
-            changed=$(.github/scripts/changed-checks.sh "$BASE")
-          else
-            changed=null
-          fi
-          # A host with no changed check gets no job.
-          matrix=$(jq -cn --argjson hosts "$HOSTS" --argjson changed "$changed" '{
-            include: [
-              $hosts[]
-              | .checks = (if $changed == null then "all" else $changed[.system] // [] | join(" ") end)
-              | select(.checks != "")
-            ]
-          }')
-          echo "$matrix" | jq .
-          echo "matrix=$matrix" >>"$GITHUB_OUTPUT"
-
   flake-check:
-    needs: plan
-    if: fromJSON(needs.plan.outputs.matrix).include[0] != null
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
-    name: flake-check (${{ matrix.host }})
-    runs-on: ${{ matrix.runner }}
+    runs-on: ubuntu-latest
     env:
       # Fork and Dependabot PRs get no secrets, so they build on the runner.
       HAVE_NIXBUILD: ${{ secrets.NIXBUILD_TOKEN != '' }}
@@ -113,19 +65,26 @@ jobs:
           } 1' "${NIX_SSHOPTS#-F}" | sudo install -D -m 600 /dev/stdin /root/.ssh/config
           sudo "$(command -v nix)" store info --store ssh://nixbuild
 
-      - name: Build the checks
+      # A pull request builds only the checks whose derivation differs from
+      # the base branch's, so a host it does not change builds nothing.
+      - name: Check the flake
         env:
-          SYSTEM: ${{ matrix.system }}
-          CHECKS: ${{ matrix.checks }}
+          BASE: github:${{ github.repository }}/${{ github.event.pull_request.base.sha }}
         run: |
-          if [ "$CHECKS" = all ]; then
-            nix flake check -L
-          else
-            echo "Changed checks: $CHECKS"
-            installables=()
-            for check in $CHECKS; do installables+=(".#checks.$SYSTEM.$check"); done
-            nix build -L --no-link "${installables[@]}"
+          if [ "$GITHUB_EVENT_NAME" != pull_request ]; then
+            exec nix flake check -L
           fi
+          nix flake check --no-build
+          system=$(nix config show system)
+          drvs() {
+            nix eval --raw "$1#checks.$system" --apply 'checks: builtins.concatStringsSep "\n"
+              (builtins.attrValues (builtins.mapAttrs (name: check: "${name} ${check.drvPath}") checks))' | sort
+          }
+          head=$(drvs .)
+          base=$(drvs "$BASE" || true)
+          changed=$(comm -23 <(echo "$head") <(echo "$base") | sed "s/ .*//; s/^/.#checks.$system./")
+          echo "Changed checks:" $changed
+          if [ -n "$changed" ]; then nix build -L --no-link $changed; fi
 
       # Not for pull requests from forks, which get no token.
       - name: Push to Cachix
