@@ -64,6 +64,31 @@ jobs:
         if: env.HAVE_NIXBUILD == 'true'
         run: sudo install -D -m 600 "${NIX_SSHOPTS#-F}" /root/.ssh/config
 
+      - name: DEBUG nixbuild connection
+        if: env.HAVE_NIXBUILD == 'true'
+        run: |
+          set +e
+          nix --version
+          echo "--- root ssh, no token in env"
+          sudo ssh nixbuild api settings signing-key-for-builds --show
+          echo "exit $?"
+          echo "--- root ssh, token in env"
+          sudo --preserve-env=NIXBUILDNET_TOKEN ssh nixbuild api settings signing-key-for-builds --show
+          echo "exit $?"
+          echo "--- runner: nix store info ssh://"
+          nix store info --store ssh://nixbuild
+          echo "exit $?"
+          echo "--- runner: nix store info ssh-ng://"
+          nix store info --store ssh-ng://nixbuild
+          echo "exit $?"
+          echo "--- root: nix store info ssh://"
+          sudo "$(command -v nix)" store info --store ssh://nixbuild
+          echo "exit $?"
+          echo "--- root ssh config, secrets removed"
+          sudo sed -E 's/^SetEnv.*/SetEnv <removed>/' /root/.ssh/config
+          sudo grep -o '^SetEnv [a-zA-Z_]*=' /root/.ssh/config
+          sudo journalctl -u nix-daemon -n 30 --no-pager
+
       - run: nix flake check -L
 
       # Not for pull requests from forks, which get no token.
