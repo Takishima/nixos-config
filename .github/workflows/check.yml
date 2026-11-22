@@ -57,37 +57,18 @@ jobs:
           nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
           generate_summary_for: job
 
-      # The action passes its SSH config, with the `nixbuild` host and the
-      # token, in NIX_SSHOPTS, which the Nix daemon does not see. The daemon
-      # is what connects, as root.
-      - name: Give the Nix daemon the nixbuild.net SSH config
-        if: env.HAVE_NIXBUILD == 'true'
-        run: sudo install -D -m 600 "${NIX_SSHOPTS#-F}" /root/.ssh/config
-
-      - name: DEBUG nixbuild connection
+      # The Nix daemon connects to nixbuild.net, as root, and sees neither
+      # NIX_SSHOPTS, which names the action's SSH config, nor the
+      # NIXBUILDNET_TOKEN that this config forwards from the environment. So
+      # root gets the config with the token written into it.
+      - name: Give the Nix daemon access to nixbuild.net
         if: env.HAVE_NIXBUILD == 'true'
         run: |
-          set +e
-          nix --version
-          echo "--- root ssh, no token in env"
-          sudo ssh nixbuild api settings signing-key-for-builds --show
-          echo "exit $?"
-          echo "--- root ssh, token in env"
-          sudo --preserve-env=NIXBUILDNET_TOKEN ssh nixbuild api settings signing-key-for-builds --show
-          echo "exit $?"
-          echo "--- runner: nix store info ssh://"
-          nix store info --store ssh://nixbuild
-          echo "exit $?"
-          echo "--- runner: nix store info ssh-ng://"
-          nix store info --store ssh-ng://nixbuild
-          echo "exit $?"
-          echo "--- root: nix store info ssh://"
+          awk '/^SetEnv / {
+            print "SetEnv NIXBUILDNET_TOKEN=\"" ENVIRON["NIXBUILDNET_TOKEN"] "\" " substr($0, 8)
+            next
+          } 1' "${NIX_SSHOPTS#-F}" | sudo install -D -m 600 /dev/stdin /root/.ssh/config
           sudo "$(command -v nix)" store info --store ssh://nixbuild
-          echo "exit $?"
-          echo "--- root ssh config, secrets removed"
-          sudo sed -E 's/^SetEnv.*/SetEnv <removed>/' /root/.ssh/config
-          sudo grep -o '^SetEnv [a-zA-Z_]*=' /root/.ssh/config
-          sudo journalctl -u nix-daemon -n 30 --no-pager
 
       - run: nix flake check -L
 
