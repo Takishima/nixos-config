@@ -74,7 +74,7 @@ jobs:
           if [ "$GITHUB_EVENT_NAME" != pull_request ]; then
             exec nix flake check -L
           fi
-          nix flake check --no-build
+          set -o pipefail
           system=$(nix config show system)
           drvs() {
             nix eval --raw "$1#checks.$system" --apply 'checks: builtins.concatStringsSep "\n"
