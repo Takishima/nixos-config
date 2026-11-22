@@ -1,6 +1,6 @@
 # my.secrets, and the modules gating on it: fixtures/secrets.yaml is encrypted
 # to nixpkgs' test SSH key, standing in for the host key, and holds
-#   password_hash: yescrypt of "sesame"
+#   password_hash/alice: yescrypt of "sesame"
 #   wifi/home: correct-horse-battery
 {
   self,
@@ -48,7 +48,9 @@ in
     let
       inherit (nodes.machine.my.secrets) has;
       expected = {
-        "password_hash" = true;
+        "password_hash/alice" = true;
+        "password_hash/bob" = false;
+        "password_hash" = false;
         "wifi/home" = true;
         "wifi/cafe" = false;
         # A key with nested keys but no value of its own.
@@ -66,7 +68,7 @@ in
       with subtest("the password comes from the sops file"):
           shadow = machine.succeed("getent shadow alice").split(":")[1]
           assert shadow.startswith("$y$"), shadow
-          assert shadow == machine.succeed("cat /run/secrets-for-users/password_hash").strip()
+          assert shadow == machine.succeed("cat /run/secrets-for-users/password_hash/alice").strip()
           machine.succeed(f"${checkPassword} sesame '{shadow}'")
           machine.fail(f"${checkPassword} changeme '{shadow}'")
 

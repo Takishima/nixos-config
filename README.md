@@ -128,10 +128,17 @@ The system builds without the file. Each key turns its feature on:
 
 | Key | Effect | Without it |
 | --- | --- | --- |
-| `password_hash` | Login password, from `mkpasswd -m yescrypt` | The password is `changeme` |
+| `password_hash/<user>` | Login password of `<user>`, from `mkpasswd -m yescrypt` | The password is `changeme` |
 | `wifi/<name>` | Password of the network `my.wifi.networks.<name>` | No profile for that network |
 | `netrc` | Credentials for private caches, at `/etc/nix/netrc` | Public caches only |
 | `nixbuild_ssh_key` | Private key of the nixbuild.net account | No remote builds |
+
+A `/` is a nested key in the file:
+
+```yaml
+password_hash:
+    alice: $y$j9T$...
+```
 
 ## Install
 
