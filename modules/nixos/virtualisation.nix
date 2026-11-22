@@ -5,13 +5,24 @@
 }:
 let
   cfg = config.my.virtualisation;
+  users =
+    group:
+    lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+      description = "Users in the ${group} group. Membership is equivalent to root.";
+    };
 in
 {
-  imports = [ ./user.nix ];
-
   options.my.virtualisation = {
-    docker.enable = lib.mkEnableOption "Docker";
-    libvirt.enable = lib.mkEnableOption "libvirt/KVM with virt-manager";
+    docker = {
+      enable = lib.mkEnableOption "Docker";
+      users = users "docker";
+    };
+    libvirt = {
+      enable = lib.mkEnableOption "libvirt/KVM with virt-manager";
+      users = users "libvirtd";
+    };
   };
 
   config = lib.mkMerge [
@@ -20,12 +31,12 @@ in
         enable = true;
         autoPrune.enable = true;
       };
-      my.user.extraGroups = [ "docker" ];
+      users.groups.docker.members = cfg.docker.users;
     })
     (lib.mkIf cfg.libvirt.enable {
       virtualisation.libvirtd.enable = true;
       programs.virt-manager.enable = true;
-      my.user.extraGroups = [ "libvirtd" ];
+      users.groups.libvirtd.members = cfg.libvirt.users;
     })
   ];
 }

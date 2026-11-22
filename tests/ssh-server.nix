@@ -1,4 +1,4 @@
-# my.sshServer: the user's key logs in, passwords and root do not. The server
+# my.sshServer: a user's key logs in, passwords and root do not. The server
 # imports every module with no sops file, as a freshly installed host would.
 {
   self,
@@ -21,16 +21,16 @@ in
     server = {
       imports = [ self.nixosModules.default ];
 
-      my = {
-        user.name = "alice";
-        sshServer = {
-          enable = true;
-          authorizedKeys = [ sshKeys.snakeOilPublicKey ];
-        };
-      };
+      my.sshServer.enable = true;
 
       # Root has the key too, so only PermitRootLogin keeps it out.
-      users.users.root.openssh.authorizedKeys.keys = [ sshKeys.snakeOilPublicKey ];
+      users.users = {
+        alice = {
+          isNormalUser = true;
+          openssh.authorizedKeys.keys = [ sshKeys.snakeOilPublicKey ];
+        };
+        root.openssh.authorizedKeys.keys = [ sshKeys.snakeOilPublicKey ];
+      };
     };
 
     client =

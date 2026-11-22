@@ -1,21 +1,9 @@
 { config, lib, ... }:
-let
-  cfg = config.my.sshServer;
-in
 {
-  imports = [ ./user.nix ];
+  # The keys are each user's `users.users.<name>.openssh.authorizedKeys.keys`.
+  options.my.sshServer.enable = lib.mkEnableOption "the OpenSSH server, with key-only logins";
 
-  options.my.sshServer = {
-    enable = lib.mkEnableOption "the OpenSSH server, with key-only logins";
-
-    authorizedKeys = lib.mkOption {
-      type = lib.types.listOf lib.types.str;
-      default = [ ];
-      description = "Public keys that may log in as the user.";
-    };
-  };
-
-  config = lib.mkIf cfg.enable {
+  config = lib.mkIf config.my.sshServer.enable {
     services.openssh = {
       enable = true;
       settings = {
@@ -26,7 +14,5 @@ in
         LoginGraceTime = 60;
       };
     };
-
-    users.users.${config.my.user.name}.openssh.authorizedKeys.keys = cfg.authorizedKeys;
   };
 }

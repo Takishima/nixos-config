@@ -39,13 +39,20 @@
 
   zramSwap.enable = true;
 
-  my = {
-    user = {
-      name = "damien";
-      fullName = "Damien Nguyen";
-      home = ../../home/damien;
-    };
+  users.users.damien = {
+    isNormalUser = true;
+    uid = 1000;
+    description = "Damien Nguyen";
+    extraGroups = [ "wheel" ];
+    openssh.authorizedKeys.keys = [
+      "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBM5JljjHQs7Ns5py2ZxQ7EdtVdD5Iz5/haaojthURiq4Gr1IYxdujftRrzJelucvYUPC0hzvkmgCfGPrFOwTQYY="
+    ];
+  };
+  home-manager.users.damien = ../../home/damien;
 
+  nix.settings.trusted-users = [ "damien" ];
+
+  my = {
     secrets.file = ../../secrets/homelinux.yaml;
 
     locale = {
@@ -77,19 +84,20 @@
         options.PageSize = "A4";
       };
     };
-    onePassword.enable = true;
-    sshServer = {
+    onePassword = {
       enable = true;
-      authorizedKeys = [
-        "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBM5JljjHQs7Ns5py2ZxQ7EdtVdD5Iz5/haaojthURiq4Gr1IYxdujftRrzJelucvYUPC0hzvkmgCfGPrFOwTQYY="
-      ];
+      users = [ "damien" ];
     };
+    sshServer.enable = true;
     fonts.packages = with pkgs; [
       eb-garamond
       inconsolata
       font-awesome
     ];
-    logitech.enable = true;
+    logitech = {
+      enable = true;
+      users = [ "damien" ];
+    };
     fanControl = {
       enable = true;
       it87 = true;
@@ -99,8 +107,14 @@
       yubikey = true;
     };
     virtualisation = {
-      docker.enable = true;
-      libvirt.enable = true;
+      docker = {
+        enable = true;
+        users = [ "damien" ];
+      };
+      libvirt = {
+        enable = true;
+        users = [ "damien" ];
+      };
     };
   };
 
@@ -110,6 +124,7 @@
   };
 
   programs = {
+    nh.flake = "/home/damien/code/nix/nixos-config";
     firefox.enable = true;
     steam.enable = true;
   };
