@@ -16,6 +16,9 @@ permissions:
 jobs:
   flake-check:
     runs-on: ubuntu-latest
+    env:
+      # Fork and Dependabot PRs get no secrets, so they build on the runner.
+      HAVE_NIXBUILD: ${{ secrets.NIXBUILD_TOKEN != '' }}
     steps:
       # The desktop closure does not fit in the runner's default free space.
       - name: Free disk space
@@ -40,6 +43,27 @@ jobs:
           # Only push-cache.sh pushes: the action would upload every closure,
           # unfree packages included, to this public cache.
           skipPush: true
+
+      # Builds everything on nixbuild.net and copies the results back.
+      # CI fails once the token expires. To make a new one, for a year:
+      #   ssh eu.nixbuild.net shell
+      #   tokens create --ttl-seconds 31536000 -p build:read -p build:write -p store:read -p store:write
+      - uses: nixbuild/nixbuild-action@v27
+        if: env.HAVE_NIXBUILD == 'true'
+        with:
+          nixbuild_token: ${{ secrets.NIXBUILD_TOKEN }}
+          generate_summary_for: job
+
+      # The action sets up SSH for the runner user only, but the Nix daemon
+      # connects as root. Copy the SSH config to root, with the token in it.
+      - name: Give the Nix daemon access to nixbuild.net
+        if: env.HAVE_NIXBUILD == 'true'
+        run: |
+          awk '/^SetEnv / {
+            print "SetEnv NIXBUILDNET_TOKEN=\"" ENVIRON["NIXBUILDNET_TOKEN"] "\" " substr($0, 8)
+            next
+          } 1' "${NIX_SSHOPTS#-F}" | sudo install -D -m 600 /dev/stdin /root/.ssh/config
+          sudo "$(command -v nix)" store info --store ssh://nixbuild
 
       - run: nix flake check -L
 
