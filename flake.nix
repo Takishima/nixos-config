@@ -177,6 +177,7 @@
               inherit ((configOf host).my.wireguard)
                 port
                 subnet
+                subnet6
                 dns
                 allowedIPs
                 ;

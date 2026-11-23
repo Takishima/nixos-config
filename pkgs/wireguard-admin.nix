@@ -15,6 +15,7 @@
   host,
   port,
   subnet,
+  subnet6 ? null,
   dns ? [ "1.1.1.1" ],
   allowedIPs ? [
     "0.0.0.0/0"
@@ -263,7 +264,9 @@ writeShellApplication {
         psk=$(wg genpsk)
         conf="[Interface]
     PrivateKey = $private
-    Address = $address/24
+    Address = $address/24${
+      lib.optionalString (subnet6 != null) ", ${lib.removeSuffix "/64" subnet6}\${address##*.}/64"
+    }
     DNS = ${lib.concatStringsSep ", " dns}
 
     [Peer]
