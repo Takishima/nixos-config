@@ -110,16 +110,28 @@
 
       # Each module carries what it needs (other modules, external modules, the
       # overlay), so another flake can import one, or `default` for all of them.
-      nixosModules = modulesIn ./modules/nixos {
-        key = "nixos-config#nixos-deps";
-        imports = [
-          inputs.home-manager.nixosModules.home-manager
-          inputs.sops-nix.nixosModules.sops
-          inputs.ncro.nixosModules.ncro
-        ];
-        nixpkgs.overlays = [ self.overlays.default ];
-        home-manager.sharedModules = [ self.homeModules.default ];
-      };
+      nixosModules =
+        modulesIn ./modules/nixos {
+          key = "nixos-config#nixos-deps";
+          imports = [
+            inputs.home-manager.nixosModules.home-manager
+            inputs.sops-nix.nixosModules.sops
+            inputs.ncro.nixosModules.ncro
+          ];
+          nixpkgs.overlays = [ self.overlays.default ];
+          home-manager.sharedModules = [ self.homeModules.default ];
+        }
+        // {
+          # Not part of `default`: they set the machine up as a Raspberry Pi.
+          raspberry-pi-4.imports = [
+            inputs.nixos-hardware.nixosModules.raspberry-pi-4
+            ./profiles/raspberry-pi
+          ];
+          raspberry-pi-5.imports = [
+            inputs.nixos-hardware.nixosModules.raspberry-pi-5
+            ./profiles/raspberry-pi
+          ];
+        };
 
       # Standalone home-manager also needs overlays.default in its pkgs.
       homeModules = modulesIn ./modules/home {
