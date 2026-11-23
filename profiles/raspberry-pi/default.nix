@@ -1,0 +1,113 @@
+# A headless Raspberry Pi booting NixOS from its SD card, any model. The
+# flake pairs it with nixos-hardware's board module as
+# nixosModules.raspberry-pi-4 and raspberry-pi-5.
+{
+  config,
+  lib,
+  modulesPath,
+  pkgs,
+  ...
+}:
+let
+  cfg = config.my.raspberryPi;
+in
+{
+  imports = [
+    # The FIRMWARE and NIXOS_SD partitions, and the image as system.build.sdImage.
+    (modulesPath + "/installer/sd-card/sd-image.nix")
+    ./argon-one.nix
+  ];
+
+  options.my.raspberryPi = {
+    mdns = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Whether the Pi answers to `<hostname>.local` on its network.";
+    };
+
+    wifi = lib.mkEnableOption ''
+      Wi-Fi, with NetworkManager and the networks of `my.wifi`. Off, the
+      radio's driver is not loaded and the Pi takes its address on Ethernet'';
+  };
+
+  config = {
+    nixpkgs.hostPlatform = "aarch64-linux";
+
+    boot = {
+      kernelParams = [
+        "console=ttyS0,115200n8"
+        "console=tty0"
+      ];
+      blacklistedKernelModules = lib.optional (!cfg.wifi) "brcmfmac";
+    };
+
+    sdImage = {
+      # Room for the vendor device trees and overlays; the default is 30 MiB.
+      firmwareSize = 256;
+      populateRootCommands = ''
+        mkdir -p ./files/boot
+        ${config.boot.loader.generic-extlinux-compatible.populateCmd} -c ${config.system.build.toplevel} -d ./files/boot
+      '';
+    };
+
+    documentation = {
+      nixos.enable = false;
+      doc.enable = false;
+    };
+
+    hardware = {
+      # The image asks for drivers of every ARM board; the Pi kernel has few of them.
+      enableAllHardware = lib.mkForce false;
+      raspberry-pi.firmware = {
+        # Keep /boot/firmware in step with the system on every switch.
+        enable = true;
+        uboot.enable = true;
+      };
+    };
+
+    fileSystems = {
+      "/".options = [ "noatime" ];
+      # The image leaves it unmounted; mount it when something reads it.
+      "/boot/firmware".options = lib.mkForce [
+        "noatime"
+        "noauto"
+        "x-systemd.automount"
+        "x-systemd.idle-timeout=1min"
+      ];
+    };
+
+    networking.networkmanager.enable = cfg.wifi;
+
+    zramSwap.enable = true;
+
+    services = {
+      journald.settings.Journal.SystemMaxUse = "100M";
+      fstrim.enable = true;
+      # <hostname>.local on the home network, not for a VPN's clients.
+      avahi = lib.mkIf cfg.mdns {
+        enable = true;
+        nssmdns4 = true;
+        settings = {
+          publish = {
+            disable-publishing = false;
+            publish-addresses = true;
+          };
+          server.deny-interfaces = [ "wg0" ];
+        };
+      };
+    };
+
+    nix.settings = {
+      max-substitution-jobs = 8;
+      # CI puts the Pis' kernel in the first, and takes some paths from the second.
+      substituters = [
+        "https://dn-personal.cachix.org"
+        "https://nix-community.cachix.org"
+      ];
+      trusted-public-keys = [
+        "dn-personal.cachix.org-1:8pB//y1vrWsFfDo9FebVmnMU3mF9t4bDDxaeQPN88RE="
+        "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
+      ];
+    };
+  };
+}
