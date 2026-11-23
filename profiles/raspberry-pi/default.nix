@@ -80,6 +80,13 @@ in
 
     zramSwap.enable = true;
 
+    # Nobody is there to pull the plug: the board's watchdog resets a Pi that
+    # hangs, or one that does not get through a reboot.
+    systemd.settings.Manager = {
+      RuntimeWatchdogSec = "30s";
+      RebootWatchdogSec = "10min";
+    };
+
     services = {
       journald.settings.Journal.SystemMaxUse = "100M";
       fstrim.enable = true;
