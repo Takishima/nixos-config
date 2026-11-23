@@ -6,6 +6,7 @@
     ./duckdns.nix
     ./fan-control.nix
     ./fonts.nix
+    ./hardened.nix
     ./locale.nix
     ./logitech.nix
     ./nix.nix
