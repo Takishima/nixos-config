@@ -1,6 +1,7 @@
 {
   imports = [
     ./audio.nix
+    ./auto-upgrade.nix
     ./bluetooth.nix
     ./desktop-niri.nix
     ./duckdns.nix
