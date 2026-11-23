@@ -44,11 +44,9 @@
     uid = 1000;
     description = "Damien Nguyen";
     extraGroups = [ "wheel" ];
-    openssh.authorizedKeys.keys = [
-      "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBM5JljjHQs7Ns5py2ZxQ7EdtVdD5Iz5/haaojthURiq4Gr1IYxdujftRrzJelucvYUPC0hzvkmgCfGPrFOwTQYY="
-    ];
+    openssh.authorizedKeys.keys = [ (import ../../home/damien/ssh-keys.nix).ecdsa ];
   };
-  home-manager.users.damien = ../../home/damien;
+  home-manager.users.damien = ../../home/damien/homelinux.nix;
 
   nix.settings.trusted-users = [ "damien" ];
 
