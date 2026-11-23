@@ -11,6 +11,15 @@ in
   options.my.shell = {
     enable = lib.mkEnableOption "fish, bash, starship, direnv and the CLI toolbelt";
 
+    extras = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Whether to add the larger tools: dust, yq, just, lnav, whois,
+        highlight, tokei and age.
+      '';
+    };
+
     aliases = lib.mkOption {
       type = lib.types.attrsOf lib.types.str;
       default = { };
@@ -31,25 +40,29 @@ in
     home = {
       shellAliases = cfg.aliases;
       sessionPath = [ "$HOME/.local/bin" ];
-      packages = with pkgs; [
-        bat
-        dust
-        eza
-        fd
-        ripgrep
-        jq
-        yq-go
-        just
-        lnav
-        tmux
-        tree
-        unzip
-        wget
-        whois
-        highlight
-        tokei
-        age
-      ];
+      packages =
+        with pkgs;
+        [
+          bat
+          eza
+          fd
+          ripgrep
+          jq
+          tmux
+          tree
+          unzip
+          wget
+        ]
+        ++ lib.optionals cfg.extras [
+          dust
+          yq-go
+          just
+          lnav
+          whois
+          highlight
+          tokei
+          age
+        ];
     };
 
     xdg.enable = true;

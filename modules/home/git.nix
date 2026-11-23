@@ -11,6 +11,15 @@ in
   options.my.git = {
     enable = lib.mkEnableOption "git with delta, difftastic and mergiraf";
 
+    extras = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Whether to add the tools around git: difftastic, mergiraf, git-absorb,
+        git-crypt, git-lfs, gh and glab. Off leaves git with delta.
+      '';
+    };
+
     userName = lib.mkOption { type = lib.types.str; };
     userEmail = lib.mkOption { type = lib.types.str; };
 
@@ -26,19 +35,24 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    home.packages = with pkgs; [
-      delta
-      difftastic
-      mergiraf
-      git-absorb
-      git-crypt
-      gh
-      glab
-    ];
+    home.packages = [
+      pkgs.delta
+    ]
+    ++ lib.optionals cfg.extras (
+      with pkgs;
+      [
+        difftastic
+        mergiraf
+        git-absorb
+        git-crypt
+        gh
+        glab
+      ]
+    );
 
     programs.git = {
       enable = true;
-      lfs.enable = true;
+      lfs.enable = cfg.extras;
 
       signing = lib.mkIf (cfg.signingKey != null) {
         format = "ssh";
@@ -57,7 +71,7 @@ in
         ".directory"
       ];
 
-      attributes = [ "* merge=mergiraf" ];
+      attributes = lib.optional cfg.extras "* merge=mergiraf";
 
       settings = {
         user = {
@@ -69,9 +83,11 @@ in
           co = "checkout";
           st = "status";
           d = "diff --patience -wb";
+          fp = "push --force-with-lease --force-if-includes";
+        }
+        // lib.optionalAttrs cfg.extras {
           dft = "-c diff.external=difft diff";
           dlog = "-c diff.external=difft log -p --ext-diff";
-          fp = "push --force-with-lease --force-if-includes";
         };
 
         gpg.ssh.allowedSignersFile = lib.mkIf (cfg.signingKey != null) (
@@ -90,9 +106,9 @@ in
           colorMoved = "default";
           mnemonicPrefix = true;
           renames = true;
-          tool = "difftastic";
-        };
-        difftool = {
+        }
+        // lib.optionalAttrs cfg.extras { tool = "difftastic"; };
+        difftool = lib.optionalAttrs cfg.extras {
           prompt = false;
           difftastic.cmd = ''difft "$LOCAL" "$REMOTE"'';
         };
@@ -100,6 +116,8 @@ in
 
         merge = {
           conflictStyle = "zdiff3";
+        }
+        // lib.optionalAttrs cfg.extras {
           mergiraf = {
             name = "mergiraf";
             driver = "mergiraf merge --git %O %A %B -s %S -x %X -y %Y -p %P -l %L";
