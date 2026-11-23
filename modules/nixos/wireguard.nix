@@ -12,6 +12,10 @@ let
   secretFile = name: config.sops.secrets.${name}.path;
 
   prefix = lib.removeSuffix ".0/24" cfg.subnet;
+  # A client's IPv6 address ends as its IPv4 one does: 10.6.0.7 is <subnet6>::7.
+  prefix6 = lib.removeSuffix "/64" cfg.subnet6;
+  address6 = address: "${prefix6}${lib.last (lib.splitString "." address)}";
+  hasIPv6 = cfg.subnet6 != null;
   peers = lib.filterAttrs (_: peer: peer.enable) cfg.peers;
   withPsk = lib.filter (name: has (psk name)) (lib.attrNames peers);
 
@@ -59,6 +63,20 @@ in
       default = "${prefix}.1";
       description = "The server's address in the VPN.";
     };
+
+    subnet6 = lib.mkOption {
+      type = lib.types.nullOr (lib.types.strMatching "fd[0-9a-f]{2}(:[0-9a-f]{1,4}){0,3}::/64");
+      default = null;
+      example = "fd3a:91c4:7e02::/64";
+      description = ''
+        The VPN's IPv6 network, a /64 of private (unique local) addresses,
+        or null for IPv4 only. The server is its `::1` and a client ends as
+        its IPv4 address does. Clients reach the internet over IPv6 behind
+        the server's own address, if the server has one.
+      '';
+    };
+
+    clientToClient = lib.mkEnableOption "clients reaching one another through the server";
 
     peers = lib.mkOption {
       type = lib.types.attrsOf (
@@ -146,20 +164,40 @@ in
 
     networking = {
       wireguard.interfaces.wg0 = lib.mkIf (has privateKey) {
-        ips = [ "${cfg.address}/24" ];
+        ips = [ "${cfg.address}/24" ] ++ lib.optional hasIPv6 "${prefix6}1/64";
         listenPort = cfg.port;
         privateKeyFile = secretFile privateKey;
         peers = lib.mapAttrsToList (name: peer: {
           inherit name;
           inherit (peer) publicKey;
-          allowedIPs = [ "${peer.address}/32" ];
+          allowedIPs = [ "${peer.address}/32" ] ++ lib.optional hasIPv6 "${address6 peer.address}/128";
           presharedKeyFile = if lib.elem name withPsk then secretFile (psk name) else null;
         }) peers;
       };
 
-      firewall.allowedUDPPorts = [ cfg.port ];
+      # Forwarding is filtered, which takes nftables: only what comes from the
+      # VPN is forwarded, and the NAT below lets it go anywhere.
+      nftables = {
+        enable = true;
+        # A table of its own, ahead of the firewall's, whose forward chain
+        # lets ICMPv6 and all that comes from wg0 through.
+        tables.wireguard-clients = lib.mkIf (!cfg.clientToClient) {
+          family = "inet";
+          content = ''
+            chain forward {
+              type filter hook forward priority filter - 10; policy accept;
+              iifname "wg0" oifname "wg0" drop comment "VPN clients do not reach one another"
+            }
+          '';
+        };
+      };
+      firewall = {
+        allowedUDPPorts = [ cfg.port ];
+        filterForward = true;
+      };
       nat = {
         enable = true;
+        enableIPv6 = hasIPv6;
         internalInterfaces = [ "wg0" ];
       };
     };

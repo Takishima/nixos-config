@@ -249,6 +249,8 @@ turns on, holds it tighter than `homelinux`:
   are ignored.
 - sshd has one host key, the Ed25519 one kept in 1Password, so a new card
   is the same host to its clients.
+- The board's watchdog resets a Pi that hangs for 30 seconds, or that does
+  not get through a reboot in 10 minutes.
 - Wi-Fi is off: the driver is not loaded (`my.raspberryPi.wifi` turns it on).
 - `rpizh.local` is announced on the home network, not to VPN clients
   (`my.raspberryPi.mdns = false` turns it off).
@@ -291,12 +293,21 @@ after its next switch: step 7.
 | What | Where |
 | --- | --- |
 | Port, subnet | `my.wireguard` in `hosts/rpizh/default.nix` |
+| IPv6 for the clients, and whether they reach one another | `my.wireguard.subnet6`, `my.wireguard.clientToClient` |
 | DNS and routes written into a new client's configuration | `my.wireguard.dns`, `my.wireguard.allowedIPs` |
 | The clients: name, public key, address, `"enable": false` to shut one out | `hosts/rpizh/wireguard.json` |
 | The server's private key, the clients' preshared keys | `wireguard/private_key`, `wireguard/psk/<client>` in the sops file |
 
 The server's address is the first of the subnet. Clients reach the home
-network and the internet through it.
+network and the internet through it, but not one another
+(`my.wireguard.clientToClient`), and nothing else is forwarded.
+
+With `my.wireguard.subnet6`, a private `fdxx:…::/64`, the VPN carries IPv6
+too: the server is its `::1`, and a client ends as its IPv4 address does
+(10.6.0.7 is `<subnet6>::7`). They go out behind the Pi's own IPv6 address,
+if its network gives it one. `add` writes both addresses; an older client
+gets IPv6 once its `Address` line has the second one, as in
+`Address = 10.6.0.7/24, <subnet6>::7/64`.
 
 ## Another Pi
 

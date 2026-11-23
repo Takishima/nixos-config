@@ -14,6 +14,7 @@ let
     host = "testpi";
     port = 51820;
     subnet = "10.6.0.0/24";
+    subnet6 = "fd00:6::/64";
     dns = [ "10.6.0.1" ];
     allowedIPs = [ "10.6.0.0/24" ];
   };
@@ -56,13 +57,13 @@ let
   phoneConf = pkgs.writeText "phone.conf" ''
     [Interface]
     PrivateKey = ${keys.peer1.privateKey}
-    Address = 10.6.0.2/24
+    Address = 10.6.0.2/24, fd00:6::2/64
 
     [Peer]
     PublicKey = ${keys.peer0.publicKey}
     PresharedKey = ${keys.presharedKey}
     Endpoint = server:51820
-    AllowedIPs = 10.6.0.0/24
+    AllowedIPs = 10.6.0.0/24, fd00:6::/64
   '';
 in
 {
@@ -88,6 +89,7 @@ in
         wireguard = {
           enable = true;
           subnet = "10.6.0.0/24";
+          subnet6 = "fd00:6::/64";
           inherit (imported) peers;
         };
       };
@@ -106,13 +108,19 @@ in
 
     with subtest("the server has the declared clients, but not the disabled one"):
         peers = server.succeed("wg show wg0 allowed-ips")
-        assert "${phoneKey}\t10.6.0.2/32" in peers, peers
+        assert "${phoneKey}\t10.6.0.2/32 fd00:6::2/128" in peers, peers
         assert "10.6.0.5" not in peers, peers
         assert server.succeed("wg show wg0 public-key").strip() == "${keys.peer0.publicKey}"
 
     with subtest("a client connects with its key and preshared key"):
         client.succeed("install -m 600 ${phoneConf} /root/phone.conf", "wg-quick up /root/phone.conf")
         client.wait_until_succeeds("ping -c 1 10.6.0.1")
+        client.wait_until_succeeds("ping -c 1 fd00:6::1")
+
+    with subtest("clients are forwarded, but not to one another"):
+        rules = server.succeed("nft list ruleset")
+        assert 'iifname "wg0" oifname "wg0" drop' in rules, rules
+        assert "policy drop" in server.succeed("nft list chain inet nixos-fw forward")
 
     with subtest("wireguard-testpi imports an old server as the module has it"):
         server.succeed("mkdir -p /root/repo/hosts/testpi /root/repo/secrets")
@@ -145,7 +153,7 @@ in
         assert "        tablet: " in secrets, secrets
         server.succeed(
             "test \"$(jq -r .peers.tablet.address /root/repo/hosts/testpi/wireguard.json)\" = 10.6.0.3",
-            "grep -Fx 'Address = 10.6.0.3/24' /root/tablet.conf",
+            "grep -Fx 'Address = 10.6.0.3/24, fd00:6::3/64' /root/tablet.conf",
             "grep -Fx 'PublicKey = ${keys.peer0.publicKey}' /root/tablet.conf",
             "grep -Fx 'Endpoint = vpn.example.org:51820' /root/tablet.conf",
             "grep -Fx 'AllowedIPs = 10.6.0.0/24' /root/tablet.conf",
