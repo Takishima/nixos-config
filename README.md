@@ -1,9 +1,10 @@
 # nixos-config
 
-NixOS and home-manager for two machines, in one flake:
+NixOS and home-manager for three machines, in one flake:
 
 - `homelinux`: Ryzen 7 3700X, Radeon RX 5700, niri with Noctalia on Wayland.
 - `rpizh`: Raspberry Pi 4, headless.
+- `rpius`: Raspberry Pi 4, headless.
 
 Home-manager runs as a NixOS module, so one switch updates system and home.
 
@@ -194,13 +195,15 @@ Afterwards:
 
 ## Raspberry Pi
 
-`rpizh` is headless, with the minimal home: shell, git and SSH. It is a VPN
-server (`my.vpnServer`): WireGuard, reachable from the internet and hardened
+`rpizh` and `rpius` are headless, with the minimal home: shell, git and SSH.
+Each is a VPN server (`my.vpnServer`): WireGuard, reachable from the internet and hardened
 for it, upgrading itself from this repository every day.
 
 [docs/raspberry-pi.md](docs/raspberry-pi.md) has the steps: secrets, bringing
 an existing VPN over, building the SD image on an x86 machine, the host key,
 updates, how it is hardened, and how to add another Pi.
+
+The commands for `rpizh`; `rpius` has the same under its name:
 
 ```sh
 nix run .#provision-rpizh -- /dev/<card> "op://<vault>/<item>"     # write a card, with its host key
