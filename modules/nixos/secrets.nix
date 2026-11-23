@@ -6,6 +6,7 @@
 }:
 let
   cfg = config.my.secrets;
+  ownFile = ../../secrets + "/${config.networking.hostName}.yaml";
   exists = cfg.file != null && builtins.pathExists cfg.file;
   text = if exists then builtins.readFile cfg.file else "";
 
@@ -52,7 +53,8 @@ in
 
     file = lib.mkOption {
       type = lib.types.nullOr lib.types.path;
-      default = null;
+      default = if builtins.pathExists ownFile then ownFile else null;
+      defaultText = lib.literalExpression "secrets/<hostname>.yaml of this repository, if there is one";
       description = "The host's sops file. It may not exist yet: see `has`.";
     };
 

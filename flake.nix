@@ -58,8 +58,11 @@
   outputs =
     { self, nixpkgs, ... }@inputs:
     let
-      system = "x86_64-linux";
       inherit (nixpkgs) lib;
+      forAllSystems = lib.genAttrs [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
 
       # { default, <file name> ... }, each importing `deps` beside its file.
       modulesIn =
@@ -74,18 +77,33 @@
           }
         ) (builtins.readDir dir);
 
-      treefmt = inputs.treefmt-nix.lib.evalModule pkgs ./treefmt.nix;
+      pkgsFor = forAllSystems (
+        system:
+        import nixpkgs {
+          inherit system;
+          config.allowUnfree = true;
+          overlays = [ self.overlays.default ];
+        }
+      );
 
-      pkgs = import nixpkgs {
-        inherit system;
-        overlays = [ self.overlays.default ];
-      };
+      treefmtFor = forAllSystems (
+        system: (inputs.treefmt-nix.lib.evalModule pkgsFor.${system} ./treefmt.nix).config.build
+      );
+
+      # Every directory of hosts/ is a machine.
+      hosts = lib.attrNames (lib.filterAttrs (_: type: type == "directory") (builtins.readDir ./hosts));
+      configOf = host: self.nixosConfigurations.${host}.config;
+      buildOf = host: (configOf host).system.build;
+      systemOf = host: (configOf host).nixpkgs.hostPlatform.system;
     in
     {
-      nixosConfigurations.homelinux = lib.nixosSystem {
-        specialArgs = { inherit inputs; };
-        modules = [ ./hosts/homelinux ];
-      };
+      nixosConfigurations = lib.genAttrs hosts (
+        host:
+        lib.nixosSystem {
+          specialArgs = { inherit inputs; };
+          modules = [ ./hosts/${host} ];
+        }
+      );
 
       overlays = import ./overlays { inherit inputs; };
 
@@ -113,18 +131,32 @@
         ];
       };
 
-      packages.${system} = { inherit (pkgs) sops-host ncro; };
+      packages = forAllSystems (system: {
+        inherit (pkgsFor.${system}) sops-host ncro;
+      });
 
-      formatter.${system} = treefmt.config.build.wrapper;
+      formatter = forAllSystems (system: treefmtFor.${system}.wrapper);
 
-      checks.${system} = {
-        formatting = treefmt.config.build.check self;
-        toplevel = self.nixosConfigurations.homelinux.config.system.build.toplevel;
-        statix = pkgs.runCommand "statix" { nativeBuildInputs = [ pkgs.statix ]; } ''
-          statix check ${self}
-          touch $out
-        '';
-      }
-      // import ./tests { inherit self nixpkgs pkgs; };
+      checks = forAllSystems (
+        system:
+        lib.genAttrs' (lib.filter (host: systemOf host == system) hosts) (
+          host: lib.nameValuePair "toplevel-${host}" (buildOf host).toplevel
+        )
+        // lib.optionalAttrs (system == "x86_64-linux") (
+          {
+            formatting = treefmtFor.${system}.check self;
+            statix =
+              pkgsFor.${system}.runCommand "statix" { nativeBuildInputs = [ pkgsFor.${system}.statix ]; }
+                ''
+                  statix check ${self}
+                  touch $out
+                '';
+          }
+          // import ./tests {
+            inherit self nixpkgs;
+            pkgs = pkgsFor.${system};
+          }
+        )
+      );
     };
 }
