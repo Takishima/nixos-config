@@ -47,7 +47,7 @@ in
     client.wait_for_unit("network.target")
 
     client.succeed("install -m 600 ${sshKeys.snakeOilPrivateKey} /root/key")
-    ssh = "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+    ssh = "ssh -n -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
     with_key = f"{ssh} -o BatchMode=yes -i /root/key"
 
     with subtest("the user's key logs in"):
