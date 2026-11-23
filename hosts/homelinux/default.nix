@@ -65,6 +65,7 @@
     };
 
     nix = {
+      workstation = true;
       cacheProxy.enable = true;
       nixbuild.enable = true;
     };
