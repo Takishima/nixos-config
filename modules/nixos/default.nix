@@ -3,6 +3,7 @@
     ./audio.nix
     ./bluetooth.nix
     ./desktop-niri.nix
+    ./duckdns.nix
     ./fan-control.nix
     ./fonts.nix
     ./locale.nix
