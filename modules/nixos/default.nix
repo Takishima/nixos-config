@@ -19,5 +19,6 @@
     ./users.nix
     ./virtualisation.nix
     ./wifi.nix
+    ./wireguard.nix
   ];
 }

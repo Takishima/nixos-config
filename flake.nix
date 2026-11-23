@@ -95,6 +95,7 @@
       configOf = host: self.nixosConfigurations.${host}.config;
       buildOf = host: (configOf host).system.build;
       systemOf = host: (configOf host).nixpkgs.hostPlatform.system;
+      vpnServers = lib.filter (host: (configOf host).my.wireguard.enable) hosts;
     in
     {
       nixosConfigurations = lib.genAttrs hosts (
@@ -131,9 +132,26 @@
         ];
       };
 
-      packages = forAllSystems (system: {
-        inherit (pkgsFor.${system}) sops-host ncro;
-      });
+      packages = forAllSystems (
+        system:
+        {
+          inherit (pkgsFor.${system}) sops-host ncro;
+        }
+        // lib.genAttrs' vpnServers (
+          host:
+          lib.nameValuePair "wireguard-${host}" (
+            pkgsFor.${system}.callPackage ./pkgs/wireguard-admin.nix {
+              inherit host;
+              inherit ((configOf host).my.wireguard)
+                port
+                subnet
+                dns
+                allowedIPs
+                ;
+            }
+          )
+        )
+      );
 
       formatter = forAllSystems (system: treefmtFor.${system}.wrapper);
 
