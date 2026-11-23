@@ -51,8 +51,6 @@
   nix.settings.trusted-users = [ "damien" ];
 
   my = {
-    secrets.file = ../../secrets/homelinux.yaml;
-
     locale = {
       timeZone = "Europe/Zurich";
       default = "en_GB.UTF-8";
