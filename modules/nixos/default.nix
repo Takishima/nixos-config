@@ -20,6 +20,7 @@
     ./ssh-server.nix
     ./users.nix
     ./virtualisation.nix
+    ./vpn-server.nix
     ./wifi.nix
     ./wireguard.nix
   ];
