@@ -43,8 +43,16 @@ sops file, and that no Nix user is trusted.
 
 ## What the server trusts
 
-A server trusts three things in turn: `main` of this repository, which it
-follows, and the caches `dn-personal.cachix.org`, where its kernel comes from,
-and `nix-community.cachix.org`. Whoever can push to one of them is root on the
-server. For that reason the CI workflow that fills the cache pins its actions by
-commit.
+A server runs as root what these give it:
+
+| What | It gives the server |
+| --- | --- |
+| `main` of this repository | The system it follows |
+| `cache.nixos.org` | Everything nixpkgs builds |
+| `dn-personal.cachix.org` | What CI builds: the Pis' kernel above all |
+| `nix-community.cachix.org` | Some paths CI takes from there |
+| nixbuild.net (`my.nix.nixbuild`) | What the server would otherwise build itself. It logs in with `nixbuild_ssh_key` |
+
+Whoever controls one of them, or holds `nixbuild_ssh_key`, is root on the
+server. For that reason the CI workflow that fills `dn-personal.cachix.org`
+pins its actions by commit, and only `main` pushes to it.
