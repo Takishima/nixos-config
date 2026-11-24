@@ -20,7 +20,7 @@ Home-manager runs as a NixOS module, so one switch updates system and home.
 | `profiles/` | What a kind of machine needs: `raspberry-pi` |
 | `home/damien/` | Damien's settings: `base.nix` for all, then `minimal.nix` for a server, or `default.nix` where he works and `homelinux.nix` on top |
 | `overlays/`, `pkgs/` | Overlays and the packages they add |
-| `docs/` | Longer guides: provisioning a Raspberry Pi, the VPN's clients, how a VPN server is hardened |
+| `docs/` | Longer guides: provisioning a Raspberry Pi, the VPN's clients, how a VPN server is hardened and upgrades itself |
 | `skills/` | AI skills, as `<area>/<name>/{meta.nix, body.md, references/}` |
 | `.claude/skills/` | The skills an agent uses when working on this repository: pointers into `skills/` |
 | `secrets/` | sops files, encrypted for the key in `.sops.yaml` |
@@ -49,7 +49,7 @@ A feature with a system part and a home part uses one option name for both
 | `my.wifi` | NetworkManager Wi-Fi profiles, passwords from sops |
 | `my.wireguard` | A WireGuard server: port, subnet and clients declared, keys from sops |
 | `my.hardened` | For a server on the internet: no sudo, root's password from sops, fail2ban, stricter kernel and firewall |
-| `my.autoUpgrade` | Nightly switch to this flake's system, undone if its checks fail |
+| `my.autoUpgrade` | Daily upgrade to this flake's system, rolled back if its checks fail, also after a reboot |
 | `my.vpnServer` | The four above, with `my.sshServer` and `my.duckdns`: what a VPN server is made of |
 
 | Home (`modules/home`) | |
@@ -207,6 +207,7 @@ for it, upgrading itself from this repository every day.
 | Put NixOS on a Pi, update it, or add another one | [docs/raspberry-pi.md](docs/raspberry-pi.md) |
 | Add, list or remove a VPN client | [docs/vpn-clients.md](docs/vpn-clients.md) |
 | Know how a VPN server is hardened, and what it trusts | [docs/server-hardening.md](docs/server-hardening.md) |
+| Know when a server rolls an upgrade back | [docs/automatic-upgrades.md](docs/automatic-upgrades.md) |
 
 The commands for `rpizh`; `rpius` has the same under its name:
 

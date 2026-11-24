@@ -31,7 +31,8 @@ that covers, and what each server still trusts. The examples are for `rpizh`.
 - Wi-Fi is off and its driver is not loaded. `my.raspberryPi.wifi` turns it on.
 - The Pi announces `rpizh.local` on the home network, not to VPN clients.
   `my.raspberryPi.mdns = false` turns that off.
-- It upgrades itself every morning: see [Updates](raspberry-pi.md#updates).
+- It upgrades itself every morning, and goes back when an upgrade leaves it
+  out of reach: see [About the automatic upgrades](automatic-upgrades.md).
 
 ## What the build refuses
 
