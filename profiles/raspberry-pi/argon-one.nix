@@ -1,10 +1,5 @@
-# The Argon One case: its fan hangs off a controller on the I2C bus, at 0x1a,
-# and stays off unless told a speed. This does what Argon's own daemon does.
-#
-# The address and the byte to write, a duty cycle from 0 to 100, are Argon's:
-#   https://github.com/Argon40Tech/Argon-ONE-i2c-Codes
-# The default curve is the one its installer writes to /etc/argononed.conf:
-#   https://download.argon40.com/argon1.sh
+# The fan of an Argon One case, which stays off unless told a speed over I2C:
+# https://github.com/Argon40Tech/Argon-ONE-i2c-Codes
 {
   config,
   lib,
