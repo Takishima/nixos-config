@@ -73,8 +73,9 @@ fan of an Argon One case.
 
 ## Reuse from another flake
 
-Each module is exported under its file name, and all of them as `default`.
-A module brings everything it needs: no other imports, no `specialArgs`.
+Each module is exported under the name of its file or directory, and all of
+them as `default`. A module brings everything it needs: no other imports, no
+`specialArgs`.
 
 ```nix
 {
@@ -99,6 +100,14 @@ A module brings everything it needs: no other imports, no `specialArgs`.
 | --- | --- |
 | `nixosModules.<name>`, `nixosModules.default` | The files of `modules/nixos` |
 | `homeModules.<name>`, `homeModules.default` | The files of `modules/home` |
+| `nixosModules.raspberry-pi-4`, `nixosModules.raspberry-pi-5` | `profiles/raspberry-pi` with nixos-hardware's board module; not part of `default` |
+| `packages.<system>.wireguard-<host>` | Manages the clients of a host with `my.wireguard` |
+| `packages.<system>.provision-<host>` | Writes a Pi's SD card, with its host key |
+| `packages.aarch64-linux.<host>-sd-image` | A Pi's SD image |
+| `packages.<system>.sops-host`, `packages.<system>.ncro` | The packages of the overlays below |
+| `checks.<system>.toplevel-<host>` | Builds a host's system, under the host's own `<system>` |
+| `checks.x86_64-linux.formatting`, `checks.x86_64-linux.statix` | `nix fmt` changes nothing; statix finds nothing |
+| `checks.x86_64-linux.vm-<name>` | Runs the VM test `tests/<name>.nix` |
 | `overlays.packages` | `sops-host` |
 | `overlays.ncro` | `ncro`, built against your nixpkgs |
 | `overlays.claude-code` | `claude-code` from llm-agents.nix, replacing nixpkgs' |
@@ -200,13 +209,13 @@ Afterwards:
 ## Raspberry Pi
 
 `rpizh` and `rpius` are headless, with the minimal home: shell, git and SSH.
-Each is a VPN server (`my.vpnServer`): WireGuard, reachable from the internet and hardened
-for it, upgrading itself from this repository every day.
+Each is a VPN server (`my.vpnServer`): WireGuard, reachable from the internet
+and hardened for it, upgrading itself from this repository every day.
 
 | To | Read |
 | --- | --- |
-| Put NixOS on a Pi, update it, or add another one | [docs/raspberry-pi.md](docs/raspberry-pi.md) |
-| Add, list or remove a VPN client | [docs/vpn-clients.md](docs/vpn-clients.md) |
+| Put NixOS on a Pi, update it, recover one that does not boot, or add another | [docs/raspberry-pi.md](docs/raspberry-pi.md) |
+| Add, list, shut out or remove a VPN client | [docs/vpn-clients.md](docs/vpn-clients.md) |
 | Know how a VPN server is hardened, and what it trusts | [docs/server-hardening.md](docs/server-hardening.md) |
 | Know when a server rolls an upgrade back, and what its alerts mean | [docs/automatic-upgrades.md](docs/automatic-upgrades.md) |
 
@@ -214,7 +223,7 @@ The commands for `rpizh`; `rpius` has the same under its name:
 
 ```sh
 nix run .#provision-rpizh -- /dev/<card> "op://<vault>/<item>"     # write a card, with its host key
-nix run .#wireguard-rpizh -- add <client>                          # a new VPN client
+nix run .#wireguard-rpizh -- --sops add <client>                   # a new VPN client; needs SOPS_AGE_KEY
 wg-peers                                                           # the VPN's clients by name, on the Pi, as root
 nixos-rebuild switch --refresh --flake github:takishima/nixos-config#rpizh   # update at once, on the Pi, as root
 ```
