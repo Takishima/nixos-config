@@ -14,7 +14,7 @@
     description = "Damien Nguyen";
     openssh.authorizedKeys.keys = lib.attrValues (import ../../home/damien/ssh-keys.nix) ++ [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFEFQdTTDWuE3Kdvky3k2jtl9pa5a5+yV4keJNpT2Fyy"
-      "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBMigf+UswNmE2L46CerU9f4ZXHeQnXTMFc9GgBnPzXYyXC5y524zrul6QsZ3cgw4i3l7T7B52pw/E95ih/taoU0= termius"
+      "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBA+nIIpFTOVL+ew5gHRNZe5YJzapuKgQUfGqMnHE00n23FEqduqNi5DDhkOmzbYmijtOQF8wJiWPv8HPsKvALG8= termius"
     ];
   };
   home-manager.users.damien = ../../home/damien/minimal.nix;
