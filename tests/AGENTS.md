@@ -7,8 +7,9 @@ the wiring. README.md, "Update", has the commands. The tests need KVM; without
 ## Shape of a test
 
 A test is a `lib.nixos.runTest` module: `name`, `nodes`, `testScript`. It gets
-`self` and `sshKeys`, nixpkgs' throwaway SSH key pair. `ssh-server.nix` is the
-one to copy.
+`self`, `sshKeys` (nixpkgs' throwaway SSH key pair), `fixtureSecrets` (the value
+of `my.secrets` for the fixture below) and `checkPassword <password> <hash>`.
+`ssh-server.nix` is the one to copy.
 
 - Nodes import the modules as another flake would: `self.nixosModules.default`,
   or the single modules under test. Never a path into `modules/`.

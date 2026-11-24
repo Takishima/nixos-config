@@ -2,7 +2,7 @@
 # `monitor` stands in for healthchecks.io, at the URL of the fixture's secret.
 {
   self,
-  sshKeys,
+  fixtureSecrets,
   lib,
   pkgs,
   ...
@@ -46,10 +46,7 @@ in
       ];
 
       my = {
-        secrets = {
-          file = ./fixtures/secrets.yaml;
-          sshKeyPath = "${sshKeys.snakeOilEd25519PrivateKey}";
-        };
+        secrets = fixtureSecrets;
         alerts.healthchecksIo = {
           enable = true;
           units = [ "job" ];

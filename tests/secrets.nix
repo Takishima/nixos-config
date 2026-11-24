@@ -10,18 +10,13 @@
 #   healthchecks/url: http://monitor:8000/ping/snakeoil (for healthchecks-io.nix)
 {
   self,
-  sshKeys,
+  checkPassword,
+  fixtureSecrets,
   lib,
   pkgs,
   ...
 }:
 let
-  # checkPassword <password> <hash>: whether the hash is of the password.
-  checkPassword = pkgs.writeScript "check-password" ''
-    #!${lib.getExe pkgs.perl}
-    exit(crypt($ARGV[0], $ARGV[1]) eq $ARGV[1] ? 0 : 1);
-  '';
-  file = ./fixtures/secrets.yaml;
   wifiPassword = "correct-horse-battery";
 in
 {
@@ -39,10 +34,7 @@ in
     };
 
     my = {
-      secrets = {
-        inherit file;
-        sshKeyPath = "${sshKeys.snakeOilEd25519PrivateKey}";
-      };
+      secrets = fixtureSecrets;
       wifi.networks = {
         home.ssid = "HomeNet";
         # No password in the sops file: no profile.
@@ -98,7 +90,7 @@ in
 
       with subtest("sops-host decrypts with the SSH key"):
           out = machine.succeed(
-              """sops-host decrypt --extract '["wifi"]["home"]' ${file}"""
+              """sops-host decrypt --extract '["wifi"]["home"]' ${fixtureSecrets.file}"""
           ).strip()
           assert out == "${wifiPassword}", out
     '';
