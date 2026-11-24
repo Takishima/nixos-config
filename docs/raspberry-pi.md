@@ -4,9 +4,9 @@ This guide shows you how to move `rpizh`, a Raspberry Pi 4, from Raspberry Pi OS
 to NixOS. At the end the Pi runs the system of this repository, with the SSH
 host key and the VPN clients it had before.
 
-After the steps come the things you do later: [updates](#updates), the
-[VPN's clients](#vpn) and [another Pi](#another-pi). [Security](#security)
-says how the Pi is hardened, and why.
+After the steps come [updates](#updates) and [another Pi](#another-pi). Two
+other pages go on from here: [How to manage the VPN's clients](vpn-clients.md)
+and [About the hardening of a VPN server](server-hardening.md).
 
 ## What is kept where
 
@@ -205,55 +205,11 @@ nixos-rebuild switch --refresh --flake github:takishima/nixos-config#rpizh
 ```
 
 You cannot push a system built on another machine to the Pi. It only takes
-paths signed by a cache it knows: see [Security](#security).
+paths signed by a cache it knows: see
+[About the hardening of a VPN server](server-hardening.md).
 
 None of this updates the boot loader in the Pi's EEPROM. To do that, as root:
 `nix shell nixpkgs#raspberrypi-eeprom -c rpi-eeprom-update`.
-
-## VPN
-
-The Pi runs a WireGuard server, set by `my.wireguard`. `wireguard-rpizh` manages
-its clients, from the checkout on any machine:
-
-```sh
-nix run .#wireguard-rpizh -- add phone      # a new client
-nix run .#wireguard-rpizh -- list
-nix run .#wireguard-rpizh -- remove phone
-```
-
-Each command changes `hosts/rpizh/wireguard.json`. With `--sops` it also changes
-the preshared key in `secrets/rpizh.yaml`, and needs `SOPS_AGE_KEY` as in
-step 2. Without `--sops` it prints what to put there. Commit both files. The Pi
-has the client after its next switch: see [Updates](#updates).
-
-`add` gives the client the next free address, and prints its configuration and
-the QR code for the phone app.
-
-- Nothing else keeps the client's private key. Scan the code then, or have the
-  configuration written with `-o phone.conf`.
-- The endpoint in the configuration is `wireguard/endpoint` of the sops file,
-  read with `SOPS_AGE_KEY`. `--endpoint <public name>` gives it instead.
-- A client that made its own key pair hands in the public key,
-  `--public-key <key>`, and keeps the other.
-
-| What | Where |
-| --- | --- |
-| Port, subnet | `my.wireguard` in `hosts/rpizh/default.nix` |
-| IPv6 for the clients, and whether they reach one another | `my.wireguard.subnet6`, `my.wireguard.clientToClient` |
-| DNS and routes written into a new client's configuration | `my.wireguard.dns`, `my.wireguard.allowedIPs` |
-| The clients: name, public key, address, `"enable": false` to shut one out | `hosts/rpizh/wireguard.json` |
-| The server's private key, the clients' preshared keys | `wireguard/private_key`, `wireguard/psk/<client>` in the sops file |
-
-The server's address is the first of the subnet. Clients reach the home network
-and the internet through it. They do not reach one another unless
-`my.wireguard.clientToClient` is set, and the Pi forwards nothing else.
-
-With `my.wireguard.subnet6`, a private `fdxx:…::/64`, the VPN carries IPv6 too.
-The server is its `::1`, and a client ends as its IPv4 address does: 10.6.0.7
-is `<subnet6>::7`. Clients go out behind the Pi's own IPv6 address, if its
-network gives it one. `add` writes both addresses. An older client gets IPv6
-once its `Address` line has the second one:
-`Address = 10.6.0.7/24, <subnet6>::7/64`.
 
 ## Another Pi
 
@@ -291,45 +247,5 @@ in CI and, for a Pi, `<name>-sd-image`, `provision-<name>` and
    ```
 
 6. Follow steps 4 to 6 above with `<name>` for `rpizh`.
-7. Forward the VPN's port on its router, and add clients as under [VPN](#vpn).
-
-## Security
-
-The Pi is reachable from the internet. So `my.vpnServer` turns on `my.hardened`,
-which holds it tighter than `homelinux`:
-
-- SSH takes keys only, three tries, and only `my.hardened.sshUsers`.
-- fail2ban bans an address for an hour after two failures in 15 minutes, and
-  twice as long each time it comes back, up to a week. It never bans the home
-  network (`my.hardened.neverBan`, 10.x.x.x here). It does ban VPN clients.
-- There is no `sudo`. Root is `su -` from `damien`'s session, with root's own
-  password, so a stolen SSH key is not root. It is not a wall either: whoever
-  has that session can wait for the password to be typed in it.
-- Users, passwords and SSH keys are only what the configuration and the sops
-  file say. `~/.ssh/authorized_keys` is not read.
-- Nobody is a trusted Nix user, since that is root without a password. Only root
-  and `sshUsers` talk to the Nix daemon.
-- Root builds from the repository, never from a checkout in a home. Whoever
-  could write there would decide what root runs next.
-- No client's private key is on the Pi. `wireguard-rpizh add` makes it where you
-  run it, and shows it once.
-- The firewall drops packets from the wrong interface and logs what it refuses.
-  Only root reads the kernel log and kernel addresses. The kernel ignores
-  redirects and source routes.
-- sshd has one host key, the Ed25519 one kept in 1Password, so a new card is the
-  same host to its clients.
-- The board's watchdog resets a Pi that hangs for 30 seconds, or that does not
-  get through a reboot in 10 minutes.
-- Wi-Fi is off and its driver is not loaded. `my.raspberryPi.wifi` turns it on.
-- The Pi announces `rpizh.local` on the home network, not to VPN clients.
-  `my.raspberryPi.mdns = false` turns that off.
-- It upgrades itself every morning: see [Updates](#updates).
-
-A host that would break one of these does not build. `my.hardened` asserts that
-somebody in `sshUsers` has a key, that every user and root has a password in the
-sops file, and that no Nix user is trusted.
-
-The Pi trusts three things in turn: `main` of this repository, which it follows,
-and the caches `dn-personal.cachix.org`, where its kernel comes from, and
-`nix-community.cachix.org`. Whoever can push to one of them is root on the Pi.
-For that reason the CI workflow that fills the cache pins its actions by commit.
+7. Forward the VPN's port on its router, and
+   [add its clients](vpn-clients.md).

@@ -20,7 +20,7 @@ Home-manager runs as a NixOS module, so one switch updates system and home.
 | `profiles/` | What a kind of machine needs: `raspberry-pi` |
 | `home/damien/` | Damien's settings: `base.nix` for all, then `minimal.nix` for a server, or `default.nix` where he works and `homelinux.nix` on top |
 | `overlays/`, `pkgs/` | Overlays and the packages they add |
-| `docs/` | Longer guides: provisioning a Raspberry Pi |
+| `docs/` | Longer guides: provisioning a Raspberry Pi, the VPN's clients, how a VPN server is hardened |
 | `skills/` | AI skills, as `<area>/<name>/{meta.nix, body.md, references/}` |
 | `secrets/` | sops files, encrypted for the key in `.sops.yaml` |
 
@@ -201,9 +201,11 @@ Afterwards:
 Each is a VPN server (`my.vpnServer`): WireGuard, reachable from the internet and hardened
 for it, upgrading itself from this repository every day.
 
-[docs/raspberry-pi.md](docs/raspberry-pi.md) has the steps: secrets, bringing
-an existing VPN over, building the SD image on an x86 machine, the host key,
-updates, how it is hardened, and how to add another Pi.
+| To | Read |
+| --- | --- |
+| Put NixOS on a Pi, update it, or add another one | [docs/raspberry-pi.md](docs/raspberry-pi.md) |
+| Add, list or remove a VPN client | [docs/vpn-clients.md](docs/vpn-clients.md) |
+| Know how a VPN server is hardened, and what it trusts | [docs/server-hardening.md](docs/server-hardening.md) |
 
 The commands for `rpizh`; `rpius` has the same under its name:
 
