@@ -26,6 +26,8 @@ jobs:
             runner: ubuntu-24.04-arm
     name: flake-check (${{ matrix.system }})
     runs-on: ${{ matrix.runner }}
+    # Holds CACHIX_AUTH_TOKEN, and admits only main: the Pis trust that cache.
+    environment: ${{ github.ref == 'refs/heads/main' && 'main' || '' }}
     env:
       # Fork and Dependabot PRs get no secrets, so they build on the runner.
       HAVE_NIXBUILD: ${{ secrets.NIXBUILD_TOKEN != '' }}
@@ -90,7 +92,6 @@ jobs:
           echo "Changed checks:" $changed
           if [ -n "$changed" ]; then nix build -L --no-link $changed; fi
 
-      # Not for pull requests from forks, which get no token.
       - name: Push to Cachix
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        if: github.ref == 'refs/heads/main'
         run: .github/scripts/push-cache.sh dn-personal ${{ matrix.system }}
