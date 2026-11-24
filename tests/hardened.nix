@@ -1,6 +1,5 @@
-# my.hardened: only the listed user logs in over
-# SSH, root has the password of the sops file and there is no sudo, and
-# fail2ban bans a stranger who keeps failing but never the home network.
+# my.hardened beside my.wireguard, as on a VPN server: who logs in, root's
+# password, and whom fail2ban bans, through nftables.
 {
   self,
   sshKeys,
@@ -41,6 +40,10 @@ in
           sshKeyPath = "${sshKeys.snakeOilEd25519PrivateKey}";
         };
         sshServer.enable = true;
+        wireguard = {
+          enable = true;
+          subnet = "10.6.0.0/24";
+        };
         hardened = {
           enable = true;
           sshUsers = [ "alice" ];
@@ -81,6 +84,9 @@ in
           server.fail("${isHome} 192.168.1.2")
           server.fail("${isHome} 110.1.2.3")
 
+      with subtest("a VPN client inside the home range may be banned"):
+          server.fail("${isHome} 10.6.0.7")
+
       with subtest("only the listed user logs in"):
           client.succeed("${ssh} alice@server true")
           client.fail("${ssh} carol@server true")
@@ -89,7 +95,7 @@ in
           client.fail("${ssh} carol@server true")
           client.fail("${ssh} carol@server true")
           server.wait_until_succeeds("fail2ban-client status sshd | grep -E 'Banned IP list:.*[0-9]'")
-          server.wait_until_succeeds("iptables -S | grep -E 'f2b-sshd.*(REJECT|DROP)'")
+          server.wait_until_succeeds("nft list set inet f2b-table addr-set-sshd | grep -F 192.168.1.")
           # A banned connection may hang instead of being refused.
           client.fail("timeout 20 ${ssh} -o ConnectTimeout=5 alice@server true")
     '';
