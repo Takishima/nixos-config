@@ -1,7 +1,8 @@
 { config, lib, ... }:
 {
-  # The keys are each user's `users.users.<name>.openssh.authorizedKeys.keys`.
-  options.my.sshServer.enable = lib.mkEnableOption "the OpenSSH server, with key-only logins";
+  options.my.sshServer.enable = lib.mkEnableOption ''
+    the OpenSSH server, with key-only logins. The keys are each user's
+    `users.users.<name>.openssh.authorizedKeys.keys`'';
 
   config = lib.mkIf config.my.sshServer.enable {
     services.openssh = {
