@@ -136,8 +136,8 @@ nix run .#provision-rpizh -- /dev/<card> "op://<vault>/<item>"
 ```
 
 The command asks for sudo. Before it writes anything, it checks that the card
-is a whole, unmounted disk and that the key is the one the secrets are encrypted
-for. Then it asks you to type the device name. The key goes from 1Password to
+is a whole, unmounted, removable disk and that the key is the one the secrets
+are encrypted for. Then it asks you to type the device name. The key goes from 1Password to
 the card without touching the disk.
 
 Never put the private key in the configuration or in the image build. It would
