@@ -10,8 +10,6 @@ let
   inherit (config.my.secrets) has;
   hasRootPassword = has rootPassword;
 
-  # Whether fail2ban leaves an address alone: one of the home network, but not
-  # a VPN client, whose /24 may be inside that range.
   users = config.users.users;
   hasKey = name: users.${name}.openssh.authorizedKeys.keys != [ ];
   withoutKey = lib.filter (name: !(users ? ${name} && hasKey name)) cfg.sshUsers;
@@ -20,22 +18,8 @@ let
   );
   trusted = lib.subtractLists [ "root" ] config.nix.settings.trusted-users;
 
-  # No password is what a sops file that cannot be decrypted leaves root with.
-  rootHasPassword = pkgs.writeShellApplication {
-    name = "root-has-password";
-    runtimeInputs = [
-      pkgs.coreutils
-      pkgs.getent
-    ];
-    text = ''
-      case $(getent shadow root | cut -d: -f2) in
-        '$'*) ;;
-        *) exit 1 ;;
-      esac
-    '';
-  };
-
   vpn = config.my.wireguard;
+  # A VPN client is not at home, though its /24 may be inside a neverBan range.
   isHome = pkgs.writeShellScript "fail2ban-is-home" (
     lib.concatLines (
       [ "case $1 in" ]
@@ -112,13 +96,10 @@ in
       }
     ];
 
-    # Only what this configuration declares: no account or password set by hand
-    # survives a switch. Passwords change in the sops file.
+    # Passwords change in the sops file: one set by hand does not survive a switch.
     users.mutableUsers = false;
 
-    # Root is reached with `su` and its own password, from a user's SSH session:
-    # a stolen SSH key alone is not root. Keep the users out of wheel: sudo is
-    # gone.
+    # Root is `su` with its own password, so a stolen SSH key alone is not root.
     security.sudo.enable = false;
     sops.secrets.${rootPassword} = lib.mkIf hasRootPassword { neededForUsers = true; };
     users.users.root.hashedPasswordFile =
@@ -127,17 +108,16 @@ in
 
     nix.settings.allowed-users = [ "root" ] ++ cfg.sshUsers;
 
+    # No password is what a sops file that cannot be decrypted leaves root with.
     my.autoUpgrade.checks = lib.mkIf hasRootPassword {
-      root-password = lib.getExe rootHasPassword;
+      root-password = "grep -q '^root:[$]' /etc/shadow";
     };
 
     services = {
       openssh = {
         settings.AllowUsers = cfg.sshUsers;
-        # Only the keys in the configuration log in, not ~/.ssh/authorized_keys.
         authorizedKeysInHomedir = false;
-        # Only the key that is kept outside the machine, so a rebuilt
-        # machine is the same host to its clients.
+        # Only the key kept outside the machine, so a rebuilt machine is the same host.
         hostKeys = [
           {
             type = "ed25519";
@@ -146,8 +126,6 @@ in
         ];
       };
 
-      # Two failures within 15 minutes ban for an hour, and each further ban
-      # doubles, up to a week. The home network is spared.
       fail2ban = {
         enable = true;
         maxretry = 2;
@@ -165,25 +143,20 @@ in
 
     networking.firewall = {
       logRefusedConnections = true;
-      # Drop a packet whose reply would leave by another interface.
       checkReversePath = "strict";
     };
 
     boot.kernel.sysctl = {
-      # Kernel logs and addresses are root's.
       "kernel.dmesg_restrict" = 1;
       "kernel.kptr_restrict" = 2;
       "kernel.unprivileged_bpf_disabled" = 1;
       "net.core.bpf_jit_harden" = 2;
       "kernel.yama.ptrace_scope" = 1;
-      # No kexec into another kernel, and no core dumps from setuid programs.
       "kernel.kexec_load_disabled" = 1;
       "fs.suid_dumpable" = 0;
-      # Refuse to open files and FIFOs that another user planted in /tmp.
       "fs.protected_fifos" = 2;
       "fs.protected_regular" = 2;
 
-      # No rerouting on a stranger's say-so.
       "net.ipv4.conf.all.accept_redirects" = 0;
       "net.ipv4.conf.default.accept_redirects" = 0;
       "net.ipv4.conf.all.secure_redirects" = 0;
