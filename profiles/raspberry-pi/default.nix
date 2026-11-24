@@ -37,6 +37,9 @@ in
       kernelParams = [
         "console=ttyS0,115200n8"
         "console=tty0"
+        # Reboot 10 seconds after a kernel panic. This also covers early
+        # boot, before the watchdog below is running.
+        "panic=10"
       ];
       blacklistedKernelModules = lib.optional (!cfg.wifi) "brcmfmac";
     };
@@ -86,6 +89,9 @@ in
       RuntimeWatchdogSec = "30s";
       RebootWatchdogSec = "10min";
     };
+    # Do not stop at an emergency prompt when a unit fails at boot: nobody
+    # is at the console. Keep booting so sshd and the upgrades start.
+    systemd.enableEmergencyMode = false;
 
     services = {
       journald.settings.Journal.SystemMaxUse = "100M";
@@ -106,6 +112,10 @@ in
 
     nix.settings = {
       max-substitution-jobs = 8;
+      # Collect garbage during a build when less than 1 GiB is free, until
+      # 3 GiB are. A full card would block upgrades.
+      min-free = 1024 * 1024 * 1024;
+      max-free = 3 * 1024 * 1024 * 1024;
       # CI puts the Pis' kernel in the first, and takes some paths from the second.
       substituters = [
         "https://dn-personal.cachix.org"

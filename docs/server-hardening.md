@@ -28,7 +28,8 @@ that covers, and what each server still trusts. The examples are for `rpizh`.
 - sshd has one host key, the Ed25519 one kept in 1Password, so a new card is the
   same host to its clients.
 - The board's watchdog resets a Pi that hangs for 30 seconds, or that does not
-  get through a reboot in 10 minutes.
+  get through a reboot in 10 minutes. A kernel panic restarts it, and a unit
+  that fails at boot does not hold it at an emergency prompt.
 - Wi-Fi is off and its driver is not loaded. `my.raspberryPi.wifi` turns it on.
 - The Pi announces `rpizh.local` on the home network, not to VPN clients.
   `my.raspberryPi.mdns = false` turns that off.
