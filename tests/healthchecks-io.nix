@@ -83,7 +83,8 @@ in
   testScript =
     { nodes, ... }:
     assert lib.assertMsg (
-      nodes.fresh.my.alerts.healthchecksIo.ping == null && nodes.fresh.warnings != [ ]
+      nodes.fresh.my.alerts.healthchecksIo.ping == null
+      && lib.any (lib.hasInfix "my.alerts.healthchecksIo") nodes.fresh.warnings
     ) "without its sops key, my.alerts.healthchecksIo must report nothing and say so";
     ''
       monitor.start()
