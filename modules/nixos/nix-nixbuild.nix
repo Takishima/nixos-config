@@ -21,6 +21,18 @@ in
         "aarch64-linux"
       ];
     };
+    extraFeatures = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+      example = [
+        "kvm"
+        "nixos-test"
+      ];
+      description = ''
+        More build features to use the builder for. A build that needs one
+        runs there when this machine cannot do it.
+      '';
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -28,8 +40,14 @@ in
       !hasKey
     ) "my.nix.nixbuild is on, but the sops file has no nixbuild_ssh_key: nothing builds remotely.";
 
-    programs.ssh.knownHosts.${cfg.host}.publicKey =
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPIQCZc54poJ8vqawd8TraNryQeJnvH1eLpIDgbiqymM";
+    programs.ssh = {
+      knownHosts.${cfg.host}.publicKey =
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPIQCZc54poJ8vqawd8TraNryQeJnvH1eLpIDgbiqymM";
+      extraConfig = ''
+        Host ${cfg.host}
+          ServerAliveInterval 60
+      '';
+    };
 
     sops.secrets.nixbuild_ssh_key = lib.mkIf hasKey { };
 
@@ -47,7 +65,8 @@ in
             "big-parallel"
             "benchmark"
             "ca-derivations"
-          ];
+          ]
+          ++ cfg.extraFeatures;
         }
       ];
       settings = {
