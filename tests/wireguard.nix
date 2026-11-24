@@ -112,6 +112,13 @@ in
         assert "10.6.0.5" not in peers, peers
         assert server.succeed("wg show wg0 public-key").strip() == "${keys.peer0.publicKey}"
 
+    with subtest("wg-peers names the clients, for root only"):
+        named = server.succeed("wg-peers")
+        assert "peer: phone (${phoneKey})" in named, named
+        assert "old_laptop" not in named, named
+        status, out = server.execute("su nobody -s /bin/sh -c wg-peers 2>&1")
+        assert status != 0, out
+
     with subtest("a client connects with its key and preshared key"):
         client.succeed("install -m 600 ${phoneConf} /root/phone.conf", "wg-quick up /root/phone.conf")
         client.wait_until_succeeds("ping -c 1 10.6.0.1")
