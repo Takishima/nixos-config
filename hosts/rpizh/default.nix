@@ -29,6 +29,15 @@
 
     vpnServer.enable = true;
 
+    nix.nixbuild = {
+      enable = true;
+      systems = [ "aarch64-linux" ];
+      extraFeatures = [
+        "kvm"
+        "nixos-test"
+      ];
+    };
+
     hardened = {
       sshUsers = [ "damien" ];
       neverBan = [ "10.*" ];
