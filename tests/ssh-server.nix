@@ -33,30 +33,35 @@
       };
   };
 
-  testScript = ''
-    start_all()
-    server.wait_for_unit("sshd.service")
-    server.wait_for_open_port(22)
-    client.wait_for_unit("network.target")
+  testScript =
+    { nodes, ... }:
+    ''
+      start_all()
+      server.wait_for_unit("sshd.service")
+      server.wait_for_open_port(22)
+      client.wait_for_unit("network.target")
 
-    client.succeed("install -m 600 ${sshKeys.snakeOilPrivateKey} /root/key")
-    ssh = "ssh -n -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-    with_key = f"{ssh} -o BatchMode=yes -i /root/key"
+      client.succeed("install -m 600 ${sshKeys.snakeOilPrivateKey} /root/key")
+      ssh = "ssh -n -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+      with_key = f"{ssh} -o BatchMode=yes -i /root/key"
 
-    with subtest("the user's key logs in"):
-        assert client.succeed(f"{with_key} alice@server whoami").strip() == "alice"
+      with subtest("the user's key logs in"):
+          assert client.succeed(f"{with_key} alice@server whoami").strip() == "alice"
 
-    with subtest("root is refused, even with an authorized key"):
-        client.fail(f"{with_key} root@server true")
+      with subtest("its upgrade check passes while sshd runs"):
+          server.succeed("${nodes.server.my.autoUpgrade.checks.sshd}")
 
-    with subtest("the password is refused, although it is the right one"):
-        # Without a sops file the user has the initial password.
-        shadow = server.succeed("getent shadow alice").split(":")[1]
-        server.succeed(f"${checkPassword} changeme '{shadow}'")
-        status, out = client.execute(
-            f"sshpass -p changeme {ssh} -o PubkeyAuthentication=no alice@server true 2>&1"
-        )
-        assert status != 0, out
-        assert "Permission denied (publickey)" in out, out
-  '';
+      with subtest("root is refused, even with an authorized key"):
+          client.fail(f"{with_key} root@server true")
+
+      with subtest("the password is refused, although it is the right one"):
+          # Without a sops file the user has the initial password.
+          shadow = server.succeed("getent shadow alice").split(":")[1]
+          server.succeed(f"${checkPassword} changeme '{shadow}'")
+          status, out = client.execute(
+              f"sshpass -p changeme {ssh} -o PubkeyAuthentication=no alice@server true 2>&1"
+          )
+          assert status != 0, out
+          assert "Permission denied (publickey)" in out, out
+    '';
 }

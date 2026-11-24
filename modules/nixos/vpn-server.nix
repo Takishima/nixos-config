@@ -33,10 +33,8 @@ in
       alerts.healthchecksIo.enable = lib.mkDefault true;
       autoUpgrade = {
         enable = lib.mkDefault true;
-        # Roll back unless the machine can still be logged into and can
-        # still fetch the next upgrade. Anything else can be fixed by one.
+        # An upgrade that can still fetch the next one can be fixed by it.
         checks = {
-          sshd = "systemctl is-active --quiet sshd.service";
           upgrade-timer = "systemctl is-active --quiet nixos-upgrade.timer";
           route = "ip route get 1.1.1.1";
         }
