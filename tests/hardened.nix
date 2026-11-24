@@ -70,6 +70,11 @@ in
           shadow = server.succeed("getent shadow root").split(":")[1]
           server.succeed(f"${checkPassword} open-sesame-root '{shadow}'")
           server.fail("command -v sudo")
+          server.succeed(${
+            lib.concatMapStringsSep ", " (check: "\"${check}\"") (
+              lib.attrValues nodes.server.my.autoUpgrade.checks
+            )
+          })
 
       with subtest("the home network is never banned, a stranger may be"):
           server.succeed("${isHome} 10.1.2.3")

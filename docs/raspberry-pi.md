@@ -191,8 +191,8 @@ set the hours.
 The repository has to stay public: the Pi fetches it without credentials.
 
 After an upgrade that switched the running system, the Pi runs
-`my.autoUpgrade.checks`: sshd and the VPN run, the next upgrade is scheduled,
-and it reaches this repository on GitHub. If one
+`my.autoUpgrade.checks`: sshd and the VPN run, root has its password, the next
+upgrade is scheduled, and it reaches this repository on GitHub. If one
 fails, the Pi switches back to the system it ran before and tries again the next
 day. `journalctl -u nixos-upgrade` says which check failed. An upgrade that
 reboots for a new kernel is not checked.

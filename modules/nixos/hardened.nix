@@ -20,6 +20,21 @@ let
   );
   trusted = lib.subtractLists [ "root" ] config.nix.settings.trusted-users;
 
+  # No password is what a sops file that cannot be decrypted leaves root with.
+  rootHasPassword = pkgs.writeShellApplication {
+    name = "root-has-password";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.getent
+    ];
+    text = ''
+      case $(getent shadow root | cut -d: -f2) in
+        '$'*) ;;
+        *) exit 1 ;;
+      esac
+    '';
+  };
+
   vpn = config.my.wireguard;
   isHome = pkgs.writeShellScript "fail2ban-is-home" (
     lib.concatLines (
@@ -35,6 +50,7 @@ let
 in
 {
   imports = [
+    ./auto-upgrade.nix
     ./nix.nix
     ./secrets.nix
     ./ssh-server.nix
@@ -110,6 +126,10 @@ in
         config.sops.secrets.${rootPassword}.path;
 
     nix.settings.allowed-users = [ "root" ] ++ cfg.sshUsers;
+
+    my.autoUpgrade.checks = lib.mkIf hasRootPassword {
+      root-password = lib.getExe rootHasPassword;
+    };
 
     services = {
       openssh = {
