@@ -20,6 +20,9 @@ what to put there.
 Commit both files. The server has the client after its next switch: see
 [Updates](raspberry-pi.md#updates).
 
+On the server, as root, `wg-peers` shows which clients are connected: it is
+`wg show wg0` with each client's name before its key.
+
 ## A new client
 
 `add` gives the client the next free address, and prints its configuration and

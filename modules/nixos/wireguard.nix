@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  pkgs,
   ...
 }:
 let
@@ -18,6 +19,21 @@ let
   hasIPv6 = cfg.subnet6 != null;
   peers = lib.filterAttrs (_: peer: peer.enable) cfg.peers;
   withPsk = lib.filter (name: has (psk name)) (lib.attrNames peers);
+
+  nameEachKey = pkgs.writeText "wg-peers.sed" (
+    lib.concatLines (lib.mapAttrsToList (name: peer: "s|${peer.publicKey}|${name} (&)|") peers)
+  );
+  wgPeers = pkgs.writeShellApplication {
+    name = "wg-peers";
+    runtimeInputs = [
+      pkgs.gnused
+      pkgs.wireguard-tools
+    ];
+    text = ''
+      if [ -t 1 ]; then export WG_COLOR_MODE=always; fi
+      wg show wg0 | sed -f ${nameEachKey}
+    '';
+  };
 
   duplicates =
     values:
@@ -43,7 +59,8 @@ in
     enable = lib.mkEnableOption ''
       a WireGuard server that routes its clients to the local network and
       the internet. Its private key is `wireguard/private_key` in the sops
-      file. Manage clients with `nix run .#wireguard-<host>`'';
+      file. Manage clients with `nix run .#wireguard-<host>`. On the server,
+      `wg-peers` is `wg show wg0` with each client's name, for root'';
 
     port = lib.mkOption {
       type = lib.types.port;
@@ -149,6 +166,8 @@ in
     warnings = lib.optional (
       !has privateKey
     ) "my.wireguard: the sops file has no ${privateKey}, so the VPN is not started.";
+
+    environment.systemPackages = [ wgPeers ];
 
     sops.secrets = lib.mkIf (has privateKey) (
       {
