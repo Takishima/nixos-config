@@ -4,6 +4,7 @@
   writeShellApplication,
   coreutils,
   gawk,
+  gnugrep,
   gnutar,
   gzip,
   jq,
@@ -27,6 +28,7 @@ writeShellApplication {
   runtimeInputs = [
     coreutils
     gawk
+    gnugrep
     gnutar
     gzip
     jq
