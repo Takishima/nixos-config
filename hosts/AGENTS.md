@@ -14,14 +14,15 @@ module in `modules/home/`.
   sops file by it.
 - `system.stateVersion` and `hardware-configuration.nix` do not change after the
   install.
-- `wireguard.json` changes through `nix run .#wireguard-<host>`, not by hand.
+- `wireguard.json` changes through `nix run .#wireguard-<host>`, not by hand. A
+  new host starts it as `{"peers": {}}`.
 
 ## Take care with
 
 - `homelinux/disko.nix` describes a disk that is wiped on install. Change it
   only when asked.
 - A change to `my.hardened`, `my.sshServer`, `my.wireguard` or the firewall
-  reaches the Pis the next night, and can lock the owner out of a machine on
+  reaches the Pis the next morning, and can lock the owner out of a machine on
   another continent. Say so in your summary, and check `tests/hardened.nix`,
   `tests/ssh-server.nix` and `tests/wireguard.nix` still cover the change.
 - A new way into a server adds its check to `my.autoUpgrade.checks`.

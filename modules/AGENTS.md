@@ -8,8 +8,9 @@ a module. A NixOS module and a home-manager module are not interchangeable.
 
 `nixos/audio.nix` is the smallest one, and the one to copy.
 
-- Nothing takes effect until the module's `enable` is set. `nixos/users.nix` and
-  `nixos/secrets.nix` are the two that always apply.
+- Nothing takes effect until the module's `enable` is set. `nixos/users.nix`,
+  `nixos/secrets.nix`, `nixos/nix.nix` and `nixos/locale.nix` are the four that
+  always apply.
 - One feature per file. The file name is kebab-case, the option camelCase:
   `fan-control.nix`, `my.fanControl`.
 - The home part of a feature takes its default from the system part through
