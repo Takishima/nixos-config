@@ -163,5 +163,11 @@
         machine.fail("systemctl restart nixos-upgrade-confirm.service")
         machine.succeed(f"rm {state}/returns")
         confirm_rolls_back()
+
+    with subtest("the upgrade that replaces a system that failed is recorded"):
+        # `original` is booted again, and still the system that failed.
+        replacement = link(f"{original}/specialisation/next")
+        succeeds(f"nix-env --profile {profile} --set {replacement}")
+        same(read("pending"), replacement)
   '';
 }
