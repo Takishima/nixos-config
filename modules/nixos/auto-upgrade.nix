@@ -27,12 +27,14 @@ let
 
     sleep ${toString cfg.settleSeconds}
     failed=
-    ${lib.concatMapStrings (check: ''
-      if ! (${check}) > /dev/null; then
-        echo "check failed: "${lib.escapeShellArg check}
-        failed=1
-      fi
-    '') cfg.checks}
+    ${lib.concatStrings (
+      lib.mapAttrsToList (name: check: ''
+        if ! (${check}) > /dev/null; then
+          echo "check failed: "${lib.escapeShellArg name}
+          failed=1
+        fi
+      '') cfg.checks
+    )}
     [ -n "$failed" ] || exit 0
 
     echo "the upgraded system fails its checks: going back to $was"
@@ -72,11 +74,13 @@ in
     };
 
     checks = lib.mkOption {
-      type = lib.types.listOf lib.types.str;
-      default = [ ];
-      example = [ "systemctl is-active --quiet sshd.service" ];
+      type = lib.types.attrsOf lib.types.str;
+      default = { };
+      example = {
+        sshd = "systemctl is-active --quiet sshd.service";
+      };
       description = ''
-        Shell commands that must all succeed once an upgrade has switched the
+        Named shell commands that must all succeed once an upgrade has switched the
         running system. If one fails, the machine switches back to the system
         it ran before, and tries the upgrade again at the next run. They are
         not run after an upgrade that reboots.
@@ -107,7 +111,7 @@ in
       randomizedDelaySec = "30min";
     };
 
-    systemd.services.nixos-upgrade.serviceConfig = lib.mkIf (cfg.checks != [ ]) {
+    systemd.services.nixos-upgrade.serviceConfig = lib.mkIf (cfg.checks != { }) {
       ExecStartPre = remember;
       ExecStopPost = verify;
       # Going back is another switch.

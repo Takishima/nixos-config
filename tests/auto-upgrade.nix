@@ -9,7 +9,7 @@
 
     my.autoUpgrade = {
       enable = true;
-      checks = [ "test -e /run/healthy" ];
+      checks.healthy = "test -e /run/healthy";
       settleSeconds = 1;
     };
 
