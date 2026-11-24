@@ -45,7 +45,7 @@ in
           ${lib.concatMapStrings (step: ''
             if [ "$temp" -ge ${toString step.at} ]; then want=${toString step.percent}; fi
           '') curve}
-          # Speed up at once, slow down only after 30 seconds below the step.
+          # Speed up at once, slow down only at the third reading below the step.
           if [ "$want" -lt "$speed" ]; then
             cool=$((cool + 1))
             if [ "$cool" -lt 3 ]; then want=$speed; fi
