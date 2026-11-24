@@ -2,17 +2,13 @@
 # password, and whom fail2ban bans, through nftables.
 {
   self,
+  checkPassword,
+  fixtureSecrets,
   sshKeys,
   lib,
-  pkgs,
   ...
 }:
 let
-  # checkPassword <password> <hash>: whether the hash is of the password.
-  checkPassword = pkgs.writeScript "check-password" ''
-    #!${lib.getExe pkgs.perl}
-    exit(crypt($ARGV[0], $ARGV[1]) eq $ARGV[1] ? 0 : 1);
-  '';
   # Over IPv4, so that one address fails and is banned.
   ssh = "ssh -n -4 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -i /root/key";
 in
@@ -35,10 +31,7 @@ in
       };
 
       my = {
-        secrets = {
-          file = ./fixtures/secrets.yaml;
-          sshKeyPath = "${sshKeys.snakeOilEd25519PrivateKey}";
-        };
+        secrets = fixtureSecrets;
         sshServer.enable = true;
         wireguard = {
           enable = true;
@@ -67,6 +60,7 @@ in
       start_all()
       server.wait_for_unit("sshd.service")
       server.wait_for_unit("fail2ban.service")
+      server.wait_for_unit("wireguard-wg0.service")
       client.succeed("install -m 600 ${sshKeys.snakeOilPrivateKey} /root/key")
 
       with subtest("root has the password of the sops file, and there is no sudo"):

@@ -2,18 +2,11 @@
 # imports every module with no sops file, as a freshly installed host would.
 {
   self,
+  checkPassword,
   sshKeys,
-  lib,
   pkgs,
   ...
 }:
-let
-  # checkPassword <password> <hash>: whether the hash is of the password.
-  checkPassword = pkgs.writeScript "check-password" ''
-    #!${lib.getExe pkgs.perl}
-    exit(crypt($ARGV[0], $ARGV[1]) eq $ARGV[1] ? 0 : 1);
-  '';
-in
 {
   name = "ssh-server";
 
