@@ -33,10 +33,12 @@ writeShellApplication {
   text = ''
     usage() {
       cat <<EOF
-    Usage: provision-${host} [--yes] <card> <1password-item>
+    Usage: provision-${host} [--yes] [--fixed-disk] <card> <1password-item>
 
       <card>            the SD card, as a whole disk: /dev/sdb, /dev/mmcblk0
       <1password-item>  the SSH Key item holding ${host}'s host key: op://<vault>/<item>
+      --yes             do not ask to type the card's name
+      --fixed-disk      write to a disk that is not removable
 
     Everything on the card is erased. Needs the 1Password CLI, signed in.
     EOF
@@ -48,10 +50,15 @@ writeShellApplication {
     }
 
     yes=
-    if [ "''${1:-}" = --yes ]; then
-      yes=1
+    fixedDisk=
+    while [ $# -gt 0 ]; do
+      case $1 in
+        --yes) yes=1 ;;
+        --fixed-disk) fixedDisk=1 ;;
+        *) break ;;
+      esac
       shift
-    fi
+    done
     if [ $# -ne 2 ]; then
       usage
       exit 1
@@ -68,8 +75,12 @@ writeShellApplication {
 
     [ -b "$card" ] || die "$card is not a block device"
     [ "$(lsblk -dno TYPE "$card")" = disk ] || die "$card is a partition, not a whole disk"
-    if lsblk -no MOUNTPOINTS "$card" | grep -q .; then
-      die "$card is in use: unmount it first"
+    mounts=$(lsblk -no MOUNTPOINTS "$card") || die "cannot tell whether $card is in use"
+    [ -z "''${mounts//[[:space:]]/}" ] || die "$card is in use: unmount it first"
+    read -r removable hotplug transport < <(lsblk -dno RM,HOTPLUG,TRAN "$card") ||
+      die "cannot tell what kind of disk $card is"
+    if [ "$removable" != 1 ] && [ "$hotplug" != 1 ] && [[ ! ''${transport:-} =~ ^(usb|mmc)$ ]]; then
+      [ -n "$fixedDisk" ] || die "$card is not a removable disk: pass --fixed-disk if it is the one to erase"
     fi
 
     command -v op >/dev/null || die "the 1Password CLI, op, is not on PATH"

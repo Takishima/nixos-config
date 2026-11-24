@@ -1,6 +1,5 @@
-# provision-<host>: with a stand-in image and a stand-in 1Password CLI, the
-# card ends up with the image, a grown root and the host key;
-# a wrong key, a partition or a mounted card is refused before anything is written.
+# provision-<host>, with a stand-in image and a stand-in 1Password CLI: what
+# the card ends up with, and what is refused before anything is written.
 {
   sshKeys,
   pkgs,
@@ -70,15 +69,25 @@ in
     machine.wait_for_unit("multi-user.target")
 
     with subtest("a key the secrets are not for is refused, the card untouched"):
-        machine.fail("${lib.getExe (provision [ "age1someoneelse" ])} --yes /dev/vdb op://vault/host")
+        machine.fail("${
+          lib.getExe (provision [ "age1someoneelse" ])
+        } --yes --fixed-disk /dev/vdb op://vault/host")
+        machine.fail("blkid /dev/vdb")
+
+    with subtest("a disk that is not removable is refused"):
+        machine.fail("${lib.getExe (provision [ recipient ])} --yes /dev/vdb op://vault/host")
         machine.fail("blkid /dev/vdb")
 
     with subtest("an item without a key is refused"):
-        machine.fail("${lib.getExe (provision [ recipient ])} --yes /dev/vdb op://vault/nope")
+        machine.fail("${
+          lib.getExe (provision [ recipient ])
+        } --yes --fixed-disk /dev/vdb op://vault/nope")
         machine.fail("blkid /dev/vdb")
 
     with subtest("the card gets the image and the key"):
-        machine.succeed("${lib.getExe (provision [ recipient ])} --yes /dev/vdb op://vault/host")
+        machine.succeed("${
+          lib.getExe (provision [ recipient ])
+        } --yes --fixed-disk /dev/vdb op://vault/host")
         machine.succeed("mkdir /mnt && mount /dev/vdb2 /mnt")
         machine.succeed(
             "test -f /mnt/from-the-image",
@@ -88,9 +97,13 @@ in
         )
 
     with subtest("a partition and a mounted card are refused"):
-        machine.fail("${lib.getExe (provision [ recipient ])} --yes /dev/vdb op://vault/host")
+        machine.fail("${
+          lib.getExe (provision [ recipient ])
+        } --yes --fixed-disk /dev/vdb op://vault/host")
         machine.succeed("umount /mnt && mount /dev/vdb2 /mnt")
-        machine.fail("${lib.getExe (provision [ recipient ])} --yes /dev/vdb2 op://vault/host")
+        machine.fail("${
+          lib.getExe (provision [ recipient ])
+        } --yes --fixed-disk /dev/vdb2 op://vault/host")
         machine.succeed("test -f /mnt/from-the-image")
 
     with subtest("the root fills the card"):
