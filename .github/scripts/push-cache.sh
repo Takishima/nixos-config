@@ -1,23 +1,19 @@
 #!/usr/bin/env bash
-# Pushes the expensive, free parts of what `nix flake check` built to the
-# public Cachix cache. Usage: push-cache.sh <cache> <system>; DRY_RUN=1 only
-# lists. The hosts are those of that system: its toplevel-<host> checks.
+# Pushes the free parts of what this job built, as recorded by
+# record-built.sh, to the public Cachix cache.
+# Usage: push-cache.sh <cache> <system>; DRY_RUN=1 only lists.
 #
-# cachix pushes a path together with its whole closure, so a filter that
-# excludes unfree packages cannot work: the system closure brings them back.
-# Instead only the paths named here are pushed, and one whose closure reaches
-# an unfree package is left out.
+# cachix pushes a path with its whole closure, so a path whose closure
+# reaches an unfree package is left out.
 set -euo pipefail
 
 cache=$1
 system=$2
 here=$(dirname "$0")
+built=${BUILT_PATHS:-/nix/var/nix/built-paths}
 
-# Packages in the hosts' closures that cache.nixos.org does not have and that
-# take long to build. Matched against the store path's name. Add to it when
-# CI starts compiling something else. Emacs's packages go one by one: Emacs
-# with all of them holds the unfree Copilot server.
-allow='(ncro|luciole|nh|gdk-pixbuf|librsvg|linux-rpi|emacs-[[:alnum:]+_.-]+)-[0-9]'
+# Not worth pushing. The two checks are rebuilt on every commit.
+skip='-(source|user-environment|treefmt-check|statix)$'
 
 # Unfree packages a free one wraps, which unfree-paths.nix cannot see.
 hidden='copilot-language-server-[0-9]'
@@ -25,32 +21,25 @@ hidden='copilot-language-server-[0-9]'
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
-nix eval --json ".#checks.$system" \
-  --apply 'checks: builtins.mapAttrs (_: check: check.outPath) checks' >"$work/checks.json"
-
-# `nix flake check` does not fetch a result a cache already has, so a path
-# missing from the store here needs no push.
-valid() {
-  while read -r path; do
+if [ -e "$built" ]; then
+  sort -u "$built" | { grep -vE -- "$skip" || true; } | while read -r path; do
     if nix-store --check-validity "$path" 2>/dev/null; then echo "$path"; fi
   done
-}
+fi >"$work/candidates"
 
-: >"$work/unfree"
-{
-  for host in $(jq -r 'keys[] | select(startswith("toplevel-")) | ltrimstr("toplevel-")' "$work/checks.json"); do
-    toplevel=$(jq -r --arg check "toplevel-$host" '.[$check]' "$work/checks.json")
-    if [ -n "$(echo "$toplevel" | valid)" ]; then
-      nix-store --query --requisites "$toplevel" |
-        grep -E "^/nix/store/[a-z0-9]{32}-$allow" || true
-    fi
-    nix eval --json ".#nixosConfigurations.$host.config" --apply "$(cat "$here/unfree-paths.nix")" |
-      jq -r '.[]' >>"$work/unfree"
-  done
-  # The other checks' results, so an unchanged test is not run again.
-  jq -r 'with_entries(select(.key | startswith("toplevel-") | not))[]' "$work/checks.json" | valid
-} | sort -u >"$work/candidates"
-sort -u -o "$work/unfree" "$work/unfree"
+if [ ! -s "$work/candidates" ]; then
+  echo "Nothing was built."
+  exit 0
+fi
+
+nix eval --json .#nixosConfigurations --apply "
+  hosts:
+  let
+    unfree = ($(cat "$here/unfree-paths.nix"));
+    here = builtins.filter (host: host.config.nixpkgs.hostPlatform.system == \"$system\") (builtins.attrValues hosts);
+  in
+  builtins.concatMap (host: unfree host.config) here
+" | jq -r '.[]' | sort -u >"$work/unfree"
 
 : >"$work/roots"
 while read -r root; do
