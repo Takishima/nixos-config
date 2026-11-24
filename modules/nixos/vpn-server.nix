@@ -14,7 +14,6 @@ in
     ./auto-upgrade.nix
     ./duckdns.nix
     ./hardened.nix
-    ./nix.nix
     ./ssh-server.nix
     ./wireguard.nix
   ];
@@ -43,9 +42,6 @@ in
         }
         // lib.optionalAttrs (githubRepository != null) {
           repository = "${lib.getExe pkgs.curl} -fsS --max-time 30 -o /dev/null https://github.com/${lib.head githubRepository}";
-        }
-        // lib.optionalAttrs (config.my.secrets.has "wireguard/private_key") {
-          wireguard = "systemctl is-active --quiet wireguard-wg0.service";
         };
       };
     };

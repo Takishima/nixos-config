@@ -43,17 +43,14 @@ let
   badNames = lib.filter (name: builtins.match "[A-Za-z0-9_.-]+" name == null) (
     lib.attrNames cfg.peers
   );
-  # A client's address is the subnet's prefix and a last number from 2 to 254.
-  isClientAddress =
-    address:
-    let
-      last = builtins.match "${lib.escapeRegex prefix}\\.([1-9][0-9]{0,2})" address;
-    in
-    last != null && lib.toInt (lib.head last) >= 2 && lib.toInt (lib.head last) <= 254;
-  outside = lib.filterAttrs (_: peer: !isClientAddress peer.address) cfg.peers;
+  clientAddresses = map (last: "${prefix}.${toString last}") (lib.range 2 254);
+  outside = lib.filterAttrs (_: peer: !lib.elem peer.address clientAddresses) cfg.peers;
 in
 {
-  imports = [ ./secrets.nix ];
+  imports = [
+    ./auto-upgrade.nix
+    ./secrets.nix
+  ];
 
   options.my.wireguard = {
     enable = lib.mkEnableOption ''
@@ -72,13 +69,6 @@ in
       type = lib.types.strMatching "[0-9]+\\.[0-9]+\\.[0-9]+\\.0/24";
       example = "10.6.0.0/24";
       description = "The VPN's network, a /24. The server is its first address.";
-    };
-
-    address = lib.mkOption {
-      type = lib.types.str;
-      readOnly = true;
-      default = "${prefix}.1";
-      description = "The server's address in the VPN.";
     };
 
     subnet6 = lib.mkOption {
@@ -169,6 +159,10 @@ in
 
     environment.systemPackages = [ wgPeers ];
 
+    my.autoUpgrade.checks = lib.mkIf (has privateKey) {
+      wireguard = "systemctl is-active --quiet wireguard-wg0.service";
+    };
+
     sops.secrets = lib.mkIf (has privateKey) (
       {
         ${privateKey}.restartUnits = [ "wireguard-wg0.service" ];
@@ -183,7 +177,7 @@ in
 
     networking = {
       wireguard.interfaces.wg0 = lib.mkIf (has privateKey) {
-        ips = [ "${cfg.address}/24" ] ++ lib.optional hasIPv6 "${prefix6}1/64";
+        ips = [ "${prefix}.1/24" ] ++ lib.optional hasIPv6 "${prefix6}1/64";
         listenPort = cfg.port;
         privateKeyFile = secretFile privateKey;
         peers = lib.mapAttrsToList (name: peer: {
@@ -194,12 +188,10 @@ in
         }) peers;
       };
 
-      # Forwarding is filtered, which takes nftables: only what comes from the
-      # VPN is forwarded, and the NAT below lets it go anywhere.
+      # filterForward takes nftables, and forwards only what comes from the VPN.
       nftables = {
         enable = true;
-        # A table of its own, ahead of the firewall's, whose forward chain
-        # lets ICMPv6 and all that comes from wg0 through.
+        # Ahead of the firewall's forward chain, which lets all from wg0 through.
         tables.wireguard-clients = lib.mkIf (!cfg.clientToClient) {
           family = "inet";
           content = ''
