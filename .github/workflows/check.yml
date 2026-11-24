@@ -40,7 +40,6 @@ jobs:
             extra-substituters = https://nix-community.cachix.org https://devenv.cachix.org
             extra-trusted-public-keys = nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             keep-going = true
-            post-build-hook = ${{ github.workspace }}/.github/scripts/record-built.sh
 
       - uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
         with:
@@ -93,5 +92,8 @@ jobs:
           if [ -n "$changed" ]; then nix build -L --no-link $changed; fi
 
       - name: Push to Cachix
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        env:
+          # A manual run of another branch has no token: it lists what it would push.
+          DRY_RUN: ${{ github.ref != 'refs/heads/main' && '1' || '' }}
         run: .github/scripts/push-cache.sh dn-personal ${{ matrix.system }}
