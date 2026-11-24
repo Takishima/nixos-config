@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Pushes the free parts of what this job built, as recorded by
-# record-built.sh, to the public Cachix cache.
+# Pushes to the public Cachix cache the free store paths in the closure of
+# this system's checks that no cache has signed.
 # Usage: push-cache.sh <cache> <system>; DRY_RUN=1 only lists.
 #
 # cachix pushes a path with its whole closure, so a path whose closure
 # reaches an unfree package is left out.
 set -euo pipefail
+export LC_ALL=C
 
 cache=$1
 system=$2
 here=$(dirname "$0")
-built=${BUILT_PATHS:-/nix/var/nix/built-paths}
 
 # Not worth pushing. The two checks are rebuilt on every commit.
 skip='-(source|user-environment|treefmt-check|statix)$'
@@ -18,19 +18,22 @@ skip='-(source|user-environment|treefmt-check|statix)$'
 # Unfree packages a free one wraps, which unfree-paths.nix cannot see.
 hidden='copilot-language-server-[0-9]'
 
+# A path none of these signed was built for this flake, by this run or by a
+# pull request on nixbuild.net.
+cached="(cache[.]nixos[.]org|nix-community[.]cachix[.]org|devenv[.]cachix[.]org|${cache}[.]cachix[.]org)-1:"
+
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
-if [ -e "$built" ]; then
-  sort -u "$built" | { grep -vE -- "$skip" || true; } | while read -r path; do
-    if nix-store --check-validity "$path" 2>/dev/null; then echo "$path"; fi
-  done
-fi >"$work/candidates"
+# nix flake check does not fetch a check that a cache already has.
+nix eval --json ".#checks.$system" --apply builtins.attrNames |
+  jq -r --arg system "$system" '.[] | ".#checks.\($system).\(.)"' |
+  xargs -r nix build --no-link --print-out-paths |
+  nix path-info --recursive --sigs --stdin >"$work/signatures"
 
-if [ ! -s "$work/candidates" ]; then
-  echo "Nothing was built."
-  exit 0
-fi
+awk '{ print $1 }' "$work/signatures" | sort -u >"$work/closure"
+awk -v cached="[[:space:]]$cached" -v skip="$skip" \
+  '$0 !~ cached && $1 !~ skip { print $1 }' "$work/signatures" | sort -u >"$work/candidates"
 
 nix eval --json .#nixosConfigurations --apply "
   hosts:
@@ -41,16 +44,14 @@ nix eval --json .#nixosConfigurations --apply "
   builtins.concatMap (host: unfree host.config) here
 " | jq -r '.[]' | sort -u >"$work/unfree"
 
-: >"$work/roots"
-while read -r root; do
-  nix-store --query --requisites "$root" | sort -u >"$work/closure"
-  if grep -qE "^/nix/store/[a-z0-9]{32}-$hidden" "$work/closure" ||
-    [ -n "$(comm -12 "$work/closure" "$work/unfree")" ]; then
-    echo "Not pushed, its closure holds an unfree package: $root"
-  else
-    echo "$root" >>"$work/roots"
-  fi
-done <"$work/candidates"
+{
+  comm -12 "$work/closure" "$work/unfree"
+  grep -E "^/nix/store/[a-z0-9]{32}-$hidden" "$work/closure" || true
+} | xargs -r nix-store --query --referrers-closure | sort -u >"$work/tainted"
+
+comm -12 "$work/candidates" "$work/tainted" |
+  sed 's/^/Not pushed, its closure holds an unfree package: /'
+comm -23 "$work/candidates" "$work/tainted" >"$work/roots"
 
 if [ ! -s "$work/roots" ]; then
   echo "Nothing to push."
