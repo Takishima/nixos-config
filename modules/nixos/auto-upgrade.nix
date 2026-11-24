@@ -393,7 +393,11 @@ in
         wants = [ "network-online.target" ];
         after = [ "network-online.target" ];
         unitConfig.ConditionPathExists = report;
-        serviceConfig.Type = "oneshot";
+        serviceConfig = {
+          Type = "oneshot";
+          Restart = "on-failure";
+          RestartSec = "10min";
+        };
         script = ''
           ${ping} /fail "an upgrade was rolled back" < ${report}
           rm ${report}
