@@ -5,21 +5,23 @@ server. The examples are for `rpizh`; `rpius` has the same command under its
 name.
 
 `wireguard-rpizh` manages the clients from a checkout of this repository, on any
-machine. Run it at the root of the checkout:
+machine. Set `SOPS_AGE_KEY` first, as in
+[step 2 of provisioning](raspberry-pi.md#2-secrets): `--sops` and `add` read
+`secrets/rpizh.yaml` with it. Then run the command at the root of the checkout:
 
 ```sh
-nix run .#wireguard-rpizh -- add phone      # a new client
+nix run .#wireguard-rpizh -- --sops add phone     # a new client
 nix run .#wireguard-rpizh -- list
-nix run .#wireguard-rpizh -- disable phone  # shut out, until `enable phone`
-nix run .#wireguard-rpizh -- remove phone
+nix run .#wireguard-rpizh -- disable phone        # shut out, until `enable phone`
+nix run .#wireguard-rpizh -- --sops remove phone
 ```
 
-Each command changes `hosts/rpizh/wireguard.json`. With `--sops` it also changes
-the preshared key in `secrets/rpizh.yaml`, and needs `SOPS_AGE_KEY`, set as in
-[step 2 of provisioning](raspberry-pi.md#2-secrets). Without `--sops` it prints
-what to put there.
+`add`, `disable`, `enable` and `remove` change `hosts/rpizh/wireguard.json`.
+With `--sops`, `add` and `remove` also change the client's preshared key in
+`secrets/rpizh.yaml`. Without it, they print what to change there.
 
-Commit both files. The server has the client after its next switch: see
+Commit what changed to `main`. The server has the change after its next
+upgrade. To shut a client out at once, switch the server by hand: see
 [Updates](raspberry-pi.md#updates).
 
 On the server, as root, `wg-peers` shows which clients are connected: it is
