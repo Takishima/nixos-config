@@ -1,7 +1,8 @@
 # How to manage the VPN's clients
 
-This guide shows you how to add, list and remove the clients of a VPN server.
-The examples are for `rpizh`; `rpius` has the same command under its name.
+This guide shows you how to add, list, shut out and remove the clients of a VPN
+server. The examples are for `rpizh`; `rpius` has the same command under its
+name.
 
 `wireguard-rpizh` manages the clients from a checkout of this repository, on any
 machine. Run it at the root of the checkout:
@@ -9,6 +10,7 @@ machine. Run it at the root of the checkout:
 ```sh
 nix run .#wireguard-rpizh -- add phone      # a new client
 nix run .#wireguard-rpizh -- list
+nix run .#wireguard-rpizh -- disable phone  # shut out, until `enable phone`
 nix run .#wireguard-rpizh -- remove phone
 ```
 
@@ -42,7 +44,7 @@ the QR code for the phone app.
 | Port, subnet | `my.wireguard` in `hosts/rpizh/default.nix` |
 | IPv6 for the clients, and whether they reach one another | `my.wireguard.subnet6`, `my.wireguard.clientToClient` |
 | DNS and routes written into a new client's configuration | `my.wireguard.dns`, `my.wireguard.allowedIPs` |
-| The clients: name, public key, address, `"enable": false` to shut one out | `hosts/rpizh/wireguard.json` |
+| The clients: name, public key, address, whether one is shut out | `hosts/rpizh/wireguard.json` |
 | The server's private key, the clients' preshared keys | `wireguard/private_key`, `wireguard/psk/<client>` in the sops file |
 
 The server is a WireGuard server, set by `my.wireguard`. Its address is the
