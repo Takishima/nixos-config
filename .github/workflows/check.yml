@@ -30,13 +30,6 @@ jobs:
       # Fork and Dependabot PRs get no secrets, so they build on the runner.
       HAVE_NIXBUILD: ${{ secrets.NIXBUILD_TOKEN != '' }}
     steps:
-      # The closures do not fit in the runner's default free space.
-      - name: Free disk space
-        run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
-            /opt/hostedtoolcache/CodeQL /usr/local/share/boost
-          df -h /
-
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: cachix/install-nix-action@bb0495a1086c46893eee56f32fd192dfe4a15bb9 # v32.0.0
