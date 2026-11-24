@@ -7,6 +7,7 @@
 #   wifi/home: correct-horse-battery
 #   wireguard/private_key, wireguard/psk/phone: nixpkgs' test keys, and
 #   wireguard/endpoint: vpn.example.org (for wireguard.nix)
+#   healthchecks/url: http://monitor:8000/ping/snakeoil (for healthchecks-io.nix)
 {
   self,
   sshKeys,

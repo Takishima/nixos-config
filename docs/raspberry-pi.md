@@ -70,6 +70,7 @@ sudo cat /etc/duckdns/duck.sh                   # the DuckDNS names and token, f
    | `password_hash/<user>` | Required, for every user |
    | `duckdns/token`, `duckdns/domains` | For DuckDNS |
    | `wireguard/endpoint` | For `wireguard-rpizh add` |
+   | `healthchecks/url` | To be [told of a failed upgrade](#get-told-when-an-upgrade-fails) |
    | `wireguard/private_key`, `wireguard/psk/<client>` | Step 3 writes them |
    | `wifi/<name>` | Only with `my.raspberryPi.wifi` |
 
@@ -217,6 +218,30 @@ paths signed by a cache it knows: see
 
 None of this updates the boot loader in the Pi's EEPROM. To do that, as root:
 `nix shell nixpkgs#raspberrypi-eeprom -c rpi-eeprom-update`.
+
+### Get told when an upgrade fails
+
+The Pi reports its upgrades to a check on
+[healthchecks.io](https://healthchecks.io), which tells you by email when one
+fails, or when the Pi goes silent.
+
+1. On healthchecks.io, add a check named `rpizh`, with a period of 1 day and a
+   grace time of 3 hours.
+2. Put the check's ping URL in the sops file, with `sops secrets/rpizh.yaml`:
+
+   ```yaml
+   healthchecks:
+       url: https://hc-ping.com/<uuid>
+   ```
+
+3. Commit the file. The Pi reports from its next upgrade on.
+4. Try it, on the Pi as root. The first command turns the check red and sends
+   you the alert, the second turns it green again:
+
+   ```sh
+   systemctl start healthchecks-fail@nixos-upgrade.service
+   systemctl start healthchecks-success@nixos-upgrade.service
+   ```
 
 ## Another Pi
 

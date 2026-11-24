@@ -6,8 +6,10 @@
 }:
 let
   cfg = config.my.autoUpgrade;
+  inherit (config.my.alerts.healthchecksIo) ping;
   bootAttempts = 3;
   skipDays = 7;
+  report = "/var/lib/nixos-upgrade/report";
 
   # The files outlive an upgrade: the next system's script reads what this
   # one wrote. Keep their meaning when changing them.
@@ -212,6 +214,10 @@ let
           echo 1 > "$failuresInARow"
         fi
         echo "$current" > "$failedAfterReboot"
+        {
+          echo "$current failed its checks after the reboot. Rolled back to $good."
+          printf '%s\n' "$reason"
+        } > ${report}
 
         # $awaitingReboot stays until the rollback holds, so that a boot
         # after a rollback cut short checks again.
@@ -234,6 +240,8 @@ let
   };
 in
 {
+  imports = [ ./alerts/healthchecks-io.nix ];
+
   options.my.autoUpgrade = {
     enable = lib.mkEnableOption "switching to the flake's current system on a timer";
 
@@ -325,6 +333,11 @@ in
       '';
     };
 
+    my.alerts.healthchecksIo = {
+      units = [ "nixos-upgrade" ] ++ lib.optional (cfg.checks != { }) "nixos-upgrade-confirm";
+      heartbeat = [ "nixos-upgrade" ];
+    };
+
     system.autoUpgrade = {
       enable = true;
       flake = "${cfg.flake}#${config.networking.hostName}";
@@ -356,6 +369,20 @@ in
           ExecStart = "${lib.getExe upgradeHealth} confirm";
           TimeoutStartSec = cfg.settleSeconds + cfg.retrySeconds + 1800;
         };
+      };
+
+      # A rollback that reboots has no time to report: the next boot does.
+      nixos-upgrade-report = lib.mkIf (ping != null) {
+        description = "Report an upgrade that was rolled back with a reboot";
+        wantedBy = [ "multi-user.target" ];
+        wants = [ "network-online.target" ];
+        after = [ "network-online.target" ];
+        unitConfig.ConditionPathExists = report;
+        serviceConfig.Type = "oneshot";
+        script = ''
+          ${ping} /fail "an upgrade was rolled back" < ${report}
+          rm ${report}
+        '';
       };
     };
   };
