@@ -1,8 +1,8 @@
 # About the hardening of a VPN server
 
 `rpizh` and `rpius` are reachable from the internet. So `my.vpnServer` turns on
-`my.hardened`, which holds them tighter than `homelinux`. This page says what
-that covers, and what each server still trusts. The examples are for `rpizh`.
+`my.hardened`, which holds them tighter than `homelinux`. The examples are for
+`rpizh`.
 
 ## What is closed
 

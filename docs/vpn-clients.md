@@ -47,16 +47,6 @@ the QR code for the phone app.
 | The clients: name, public key, address, whether one is shut out | `hosts/rpizh/wireguard.json` |
 | The server's private key, the clients' preshared keys | `wireguard/private_key`, `wireguard/psk/<client>` in the sops file |
 
-The server is a WireGuard server, set by `my.wireguard`. Its address is the
-first of the subnet. Clients reach the home network and the internet through
-it. They do not reach one another unless `my.wireguard.clientToClient` is set,
-and the server forwards nothing else.
-
-## IPv6
-
-With `my.wireguard.subnet6`, a private `fdxx:…::/64`, the VPN carries IPv6 too.
-The server is its `::1`, and a client ends as its IPv4 address does: 10.6.0.7
-is `<subnet6>::7`. Clients go out behind the server's own IPv6 address, if its
-network gives it one. `add` writes both addresses. An older client gets IPv6
-once its `Address` line has the second one:
+`add` writes both addresses of a client when `my.wireguard.subnet6` is set. An
+older client gets IPv6 once its `Address` line has the second one:
 `Address = 10.6.0.7/24, <subnet6>::7/64`.
