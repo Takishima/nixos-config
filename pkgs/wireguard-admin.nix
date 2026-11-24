@@ -14,15 +14,13 @@
   wireguard-tools,
 
   host,
-  port,
-  subnet,
-  subnet6 ? null,
-  dns ? [ "1.1.1.1" ],
-  allowedIPs ? [
-    "0.0.0.0/0"
-    "::/0"
-  ],
+  # The host's config.my.wireguard.
+  server,
 }:
+let
+  inherit (server) subnet subnet6;
+  port = toString server.port;
+in
 writeShellApplication {
   name = "wireguard-${host}";
   runtimeInputs = [
@@ -74,8 +72,6 @@ writeShellApplication {
     if [ "''${1:-}" = --sops ]; then
       sops=1
       shift
-    fi
-    if [ -n "$sops" ]; then
       sops decrypt "$secrets" >/dev/null || die "sops cannot decrypt $secrets: is SOPS_AGE_KEY set?"
     fi
     command=''${1:-}
@@ -90,12 +86,12 @@ writeShellApplication {
       jq -S . >"$file.new"
       mv "$file.new" "$file"
     }
-    check_name() {
-      [[ $1 =~ ^[A-Za-z0-9_.-]+$ ]] || die "a name takes letters, digits, _ . and - only: $1"
+    has_client() {
+      state | jq -e --arg name "$1" '.peers | has($name)' >/dev/null
     }
     existing_client() {
       [ -n "$1" ] || die "$command takes the client's name"
-      [ "$(state | jq --arg name "$1" '.peers | has($name)')" = true ] || die "no client $1"
+      has_client "$1" || die "no client $1"
     }
     sops_index() {
       jq -rn --arg path "wireguard/$1" '$path | split("/") | map("[" + tojson + "]") | join("")'
@@ -212,8 +208,8 @@ writeShellApplication {
           *",$prefix.1/24,"*) ;;
           *) die "the server's address is $address, not $prefix.1/24: set my.wireguard.subnet to its network first" ;;
         esac
-        [ "$listen" = ${toString port} ] ||
-          echo "Note: the old server listens on ''${listen:-no fixed port}, my.wireguard.port is ${toString port}. Clients connect to the old one." >&2
+        [ "$listen" = ${port} ] ||
+          echo "Note: the old server listens on ''${listen:-no fixed port}, my.wireguard.port is ${port}. Clients connect to the old one." >&2
 
         new=$(state | jq --arg key "$(wg pubkey <<<"$private")" '.publicKey = $key')
         secret private_key "$private"
@@ -242,7 +238,7 @@ writeShellApplication {
         name=''${1:-}
         [ -n "$name" ] || die "add takes the client's name"
         shift
-        check_name "$name"
+        [[ $name =~ ^[A-Za-z0-9_.-]+$ ]] || die "a name takes letters, digits, _ . and - only: $name"
         endpoint=""
         public=""
         out=""
@@ -259,17 +255,12 @@ writeShellApplication {
           endpoint=$(sops decrypt --extract '["wireguard"]["endpoint"]' "$secrets" 2>/dev/null) ||
             die "say what clients connect to: --endpoint <public name>, or wireguard/endpoint in $secrets (needs SOPS_AGE_KEY)"
         fi
-        server=$(state | jq -r '.publicKey // empty')
-        [ -n "$server" ] || die "$file has no server yet: run init, or import"
-        [ "$(state | jq --arg name "$name" '.peers | has($name)')" = false ] || die "there is a client $name already"
+        serverKey=$(state | jq -r '.publicKey // empty')
+        [ -n "$serverKey" ] || die "$file has no server yet: run init, or import"
+        if has_client "$name"; then die "there is a client $name already"; fi
 
-        address=
-        for last in $(seq 2 254); do
-          if [ "$(state | jq --arg address "$prefix.$last" '[.peers[].address] | index($address)')" = null ]; then
-            address=$prefix.$last
-            break
-          fi
-        done
+        address=$(state | jq -r --arg prefix "$prefix" \
+          '[range(2; 255) | "\($prefix).\(.)"] - [.peers[].address] | first // empty')
         [ -n "$address" ] || die "${subnet} is full"
 
         private="<the client's private key>"
@@ -283,13 +274,13 @@ writeShellApplication {
     Address = $address/24${
       lib.optionalString (subnet6 != null) ", ${lib.removeSuffix "/64" subnet6}\${address##*.}/64"
     }
-    DNS = ${lib.concatStringsSep ", " dns}
+    DNS = ${lib.concatStringsSep ", " server.dns}
 
     [Peer]
-    PublicKey = $server
+    PublicKey = $serverKey
     PresharedKey = $psk
-    Endpoint = $endpoint:${toString port}
-    AllowedIPs = ${lib.concatStringsSep ", " allowedIPs}"
+    Endpoint = $endpoint:${port}
+    AllowedIPs = ${lib.concatStringsSep ", " server.allowedIPs}"
 
         new=$(state | jq --arg name "$name" --arg key "$public" --arg address "$address" \
           '.peers[$name] = { publicKey: $key, address: $address }')
@@ -309,22 +300,19 @@ writeShellApplication {
         ;;
 
       disable)
-        name=''${1:-}
-        existing_client "$name"
-        state | jq --arg name "$name" '.peers[$name].enable = false' | save
+        existing_client "''${1:-}"
+        state | jq --arg name "$1" '.peers[$name].enable = false' | save
         ;;
 
       enable)
-        name=''${1:-}
-        existing_client "$name"
-        state | jq --arg name "$name" 'del(.peers[$name].enable)' | save
+        existing_client "''${1:-}"
+        state | jq --arg name "$1" 'del(.peers[$name].enable)' | save
         ;;
 
       remove)
-        name=''${1:-}
-        existing_client "$name"
-        drop_secret "psk/$name"
-        state | jq --arg name "$name" 'del(.peers[$name])' | save
+        existing_client "''${1:-}"
+        drop_secret "psk/$1"
+        state | jq --arg name "$1" 'del(.peers[$name])' | save
         ;;
 
       list)
