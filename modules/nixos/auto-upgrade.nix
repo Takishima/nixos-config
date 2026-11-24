@@ -118,8 +118,6 @@ let
       verify() {
         local before good new
         before=$(cat "$systemBefore") || exit 0
-        # The run that brings this module in has no link yet.
-        if [ ! -e "$goodLink" ]; then ln -sfn "$before" "$goodLink"; fi
         good=$(readlink "$goodLink") || exit 0
         new=$(readlink -f "$profile")
 
