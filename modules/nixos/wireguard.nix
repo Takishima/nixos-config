@@ -55,7 +55,7 @@ in
   options.my.wireguard = {
     enable = lib.mkEnableOption ''
       a WireGuard server that routes its clients to the local network and
-      the internet. Its private key is `wireguard/private_key` in the sops
+      the internet, but not to one another. Its private key is `wireguard/private_key` in the sops
       file: without it nothing is started and no port is opened. Manage
       clients with `nix run .#wireguard-<host>`. On the server, `wg-peers` is
       `wg show wg0` with each client's name, for root'';
@@ -83,8 +83,6 @@ in
         the server's own address, if the server has one.
       '';
     };
-
-    clientToClient = lib.mkEnableOption "clients reaching one another through the server";
 
     peers = lib.mkOption {
       type = lib.types.attrsOf (
@@ -193,7 +191,7 @@ in
           nftables = {
             enable = true;
             # Ahead of the firewall's forward chain, which lets all from wg0 through.
-            tables.wireguard-clients = lib.mkIf (!cfg.clientToClient) {
+            tables.wireguard-clients = {
               family = "inet";
               content = ''
                 chain forward {

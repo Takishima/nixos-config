@@ -42,7 +42,7 @@ the QR code for the phone app.
 | What | Where |
 | --- | --- |
 | Port, subnet | `my.wireguard` in `hosts/rpizh/default.nix` |
-| IPv6 for the clients, and whether they reach one another | `my.wireguard.subnet6`, `my.wireguard.clientToClient` |
+| IPv6 for the clients | `my.wireguard.subnet6` |
 | DNS and routes written into a new client's configuration | `my.wireguard.dns`, `my.wireguard.allowedIPs` |
 | The clients: name, public key, address, whether one is shut out | `hosts/rpizh/wireguard.json` |
 | The server's private key, the clients' preshared keys | `wireguard/private_key`, `wireguard/psk/<client>` in the sops file |
