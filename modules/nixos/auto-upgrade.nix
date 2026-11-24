@@ -362,6 +362,8 @@ in
       nixos-upgrade = {
         after = [ "nixos-upgrade-confirm.service" ];
         serviceConfig = {
+          # A run that hangs would block every later one, and report nothing.
+          TimeoutStartSec = "12h";
           ExecStartPre = "${lib.getExe upgradeHealth} remember";
           ExecStopPost = "${lib.getExe upgradeHealth} verify";
           # The checks, then a rollback, which is another switch.
