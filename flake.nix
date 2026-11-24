@@ -96,7 +96,7 @@
       buildOf = host: (configOf host).system.build;
       systemOf = host: (configOf host).nixpkgs.hostPlatform.system;
       pis = lib.filter (host: self.nixosConfigurations.${host}.options ? sdImage) hosts;
-      vpnServers = lib.filter (host: (configOf host).my.wireguard.enable) hosts;
+      wireguardServers = lib.filter (host: (configOf host).my.wireguard.enable) hosts;
 
       # The age recipients a sops file is encrypted for.
       recipientsOf =
@@ -169,7 +169,7 @@
         {
           inherit (pkgsFor.${system}) sops-host ncro;
         }
-        // lib.genAttrs' vpnServers (
+        // lib.genAttrs' wireguardServers (
           host:
           lib.nameValuePair "wireguard-${host}" (
             pkgsFor.${system}.callPackage ./pkgs/wireguard-admin.nix {
