@@ -1,9 +1,7 @@
 # About the automatic upgrades
 
 `rpizh` and `rpius` upgrade themselves every morning, with nobody near them.
-This page says how they tell a bad upgrade from a good one, what they do about
-it, and where that stops. For the hours and the commands, see
-[Updates](raspberry-pi.md#updates).
+For the hours and the commands, see [Updates](raspberry-pi.md#updates).
 
 ## What a good upgrade is
 

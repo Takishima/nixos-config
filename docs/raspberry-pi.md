@@ -4,25 +4,6 @@ This guide shows you how to move `rpizh`, a Raspberry Pi 4, from Raspberry Pi OS
 to NixOS. At the end the Pi runs the system of this repository, with the SSH
 host key and the VPN clients it had before.
 
-After the steps come [updates](#updates) and [another Pi](#another-pi). Three
-other pages go on from here: [How to manage the VPN's clients](vpn-clients.md),
-[About the hardening of a VPN server](server-hardening.md) and
-[About the automatic upgrades](automatic-upgrades.md).
-
-## What is kept where
-
-Nothing the Pi needs is only on its card. A new card written from this
-repository, with the host key, is the same machine.
-
-| What | Where |
-| --- | --- |
-| What every Pi needs | `profiles/raspberry-pi/` |
-| What a VPN server is made of | `my.vpnServer`, in `modules/nixos/vpn-server.nix` |
-| What this Pi is | `hosts/rpizh/`, with the home `home/damien/minimal.nix` |
-| The SSH host key, which also decrypts the secrets | 1Password, then `/etc/ssh` on the card |
-| Secrets: passwords, the VPN's keys, DuckDNS, Wi-Fi | `secrets/rpizh.yaml`, encrypted for that host key |
-| The VPN's clients: names, public keys, addresses | `hosts/rpizh/wireguard.json` |
-
 ## Before you start
 
 You need a machine with Nix and a checkout of this repository, and on it `sops`,
@@ -137,33 +118,11 @@ nix run .#provision-rpizh -- /dev/<card> "op://<vault>/<item>"
 
 The command asks for sudo. Before it writes anything, it checks that the card
 is a whole, unmounted, removable disk and that the key is the one the secrets
-are encrypted for. Then it asks you to type the device name. The key goes from 1Password to
-the card without touching the disk.
+are encrypted for. Then it asks you to type the device name. The key goes from
+1Password to the card without touching the disk.
 
 Never put the private key in the configuration or in the image build. It would
 land in the Nix store, readable by every user and pushed to the cache.
-
-<details>
-<summary>The same by hand</summary>
-
-```sh
-zstd -dc result/sd-image/*.img.zst | sudo dd of=/dev/<card> bs=4M status=progress
-
-# Grow the root, which the image packs full, then mount it.
-echo ",+" | sudo sfdisk -N 2 /dev/<card>
-sudo e2fsck -fp /dev/<card>2; sudo resize2fs /dev/<card>2
-sudo mount /dev/<card>2 /mnt
-sudo install -d -m 755 /mnt/etc/ssh
-
-op read "op://<vault>/<item>/private_key?ssh-format=openssh" \
-  | sudo install -m 600 /dev/stdin /mnt/etc/ssh/ssh_host_ed25519_key
-op read "op://<vault>/<item>/public_key" \
-  | sudo install -m 644 /dev/stdin /mnt/etc/ssh/ssh_host_ed25519_key.pub
-
-sudo umount /mnt
-```
-
-</details>
 
 ## 6. First boot
 
@@ -179,8 +138,7 @@ sudo umount /mnt
 
 If the card booted before the key was on it, the Pi made a new host key and
 cannot read its secrets. The VPN is down and root has no password, so nobody can
-become root. Put the key on the card from another machine, as in "The same by
-hand" of step 5, or write the card again.
+become root. Write the card again.
 
 ## Updates
 
@@ -192,17 +150,13 @@ set the hours.
 
 The repository has to stay public: the Pi fetches it without credentials.
 
-After an upgrade, and after the reboot of one with a new kernel, the Pi runs
-`my.autoUpgrade.checks`. If one keeps failing for ten minutes, the Pi goes back
-to the system it ran before, with a reboot if the upgrade took one. To see which
-check failed, on the Pi:
+If an upgrade fails one of `my.autoUpgrade.checks`, the Pi goes back to the
+system it ran before: see [About the automatic upgrades](automatic-upgrades.md).
+To see which check failed, on the Pi:
 
 ```sh
 journalctl -u nixos-upgrade -u nixos-upgrade-confirm
 ```
-
-[About the automatic upgrades](automatic-upgrades.md) says what the checks are,
-when the Pi tries an upgrade again, and what they do not catch.
 
 To switch at once, wait for CI's run on `main`, which puts the kernel in the
 cache. Then, on the Pi:
