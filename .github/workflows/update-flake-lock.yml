@@ -1,0 +1,38 @@
+name: update-flake-lock
+
+on:
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    # Holds FLAKE_UPDATE_TOKEN: a pull request opened with the default token
+    # starts no workflow, so the required checks would never run.
+    environment: flake-update
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: cachix/install-nix-action@bb0495a1086c46893eee56f32fd192dfe4a15bb9 # v32.0.0
+
+      - uses: DeterminateSystems/update-flake-lock@da03c0f078bc4b2c37ee4f7e072d34bf8f188bb3 # v29
+        id: update
+        with:
+          token: ${{ secrets.FLAKE_UPDATE_TOKEN }}
+          commit-msg: "chore(flake): update flake.lock"
+          pr-title: "chore(flake): update flake.lock"
+          pr-body: |
+            ```
+            {{ env.GIT_COMMIT_MESSAGE }}
+            ```
+
+      - name: Merge once the required checks pass
+        if: contains(fromJSON('["created", "updated"]'), steps.update.outputs.pull-request-operation)
+        env:
+          GH_TOKEN: ${{ secrets.FLAKE_UPDATE_TOKEN }}
+          PR: ${{ steps.update.outputs.pull-request-number }}
+        run: gh pr merge --auto --rebase "$PR"
