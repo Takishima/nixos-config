@@ -44,13 +44,13 @@ The secrets file is encrypted for the host key. `.sops.yaml` lists its public
 half as an age recipient:
 
 ```sh
-op read "op://<vault>/<item>/public key" | ssh-to-age
+op read "op://<vault>/<item>/public_key" | ssh-to-age
 ```
 
 Edit the file from any machine, with the private key read from 1Password:
 
 ```sh
-SOPS_AGE_KEY=$(op read "op://<vault>/<item>/private key?ssh-format=openssh" | ssh-to-age -private-key) \
+SOPS_AGE_KEY=$(op read "op://<vault>/<item>/private_key?ssh-format=openssh" | ssh-to-age -private-key) \
   sops secrets/rpizh.yaml
 ```
 
@@ -86,7 +86,7 @@ keys in the secrets. `wireguard-rpizh` reads the old server's `wg0.conf`,
 PiVPN's or any other, and writes both, at the root of the repository:
 
 ```sh
-export SOPS_AGE_KEY=$(op read "op://<vault>/<item>/private key?ssh-format=openssh" | ssh-to-age -private-key)
+export SOPS_AGE_KEY=$(op read "op://<vault>/<item>/private_key?ssh-format=openssh" | ssh-to-age -private-key)
 nix run .#wireguard-rpizh -- --sops import wg0.conf
 git add hosts/rpizh/wireguard.json secrets/rpizh.yaml
 ```
@@ -160,9 +160,9 @@ sudo e2fsck -fp /dev/<card>2; sudo resize2fs /dev/<card>2
 sudo mount /dev/<card>2 /mnt
 sudo install -d -m 755 /mnt/etc/ssh
 
-op read "op://<vault>/<item>/private key?ssh-format=openssh" \
+op read "op://<vault>/<item>/private_key?ssh-format=openssh" \
   | sudo install -m 600 /dev/stdin /mnt/etc/ssh/ssh_host_ed25519_key
-op read "op://<vault>/<item>/public key" \
+op read "op://<vault>/<item>/public_key" \
   | sudo install -m 644 /dev/stdin /mnt/etc/ssh/ssh_host_ed25519_key.pub
 
 sudo umount /mnt

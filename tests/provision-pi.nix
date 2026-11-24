@@ -50,10 +50,10 @@ let
       inherit image recipients;
     };
 
-  # op read "op://vault/host/private key?ssh-format=openssh"
+  # op read "op://vault/host/private_key?ssh-format=openssh"
   op = pkgs.writeShellScriptBin "op" ''
     case $2 in
-      "op://vault/host/private key?ssh-format=openssh") cat ${sshKeys.snakeOilEd25519PrivateKey} ;;
+      "op://vault/host/private_key?ssh-format=openssh") cat ${sshKeys.snakeOilEd25519PrivateKey} ;;
       *) exit 1 ;;
     esac
   '';
