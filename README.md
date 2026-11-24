@@ -18,7 +18,7 @@ Home-manager runs as a NixOS module, so one switch updates system and home.
 | `modules/nixos/` | One module per system feature, each behind a `my.*` option |
 | `modules/home/` | One home-manager module per program or domain, also under `my.*` |
 | `profiles/` | What a kind of machine needs: `raspberry-pi` |
-| `home/damien/` | Damien's settings: `base.nix` for all, then `minimal.nix` for a server, or `default.nix` where he works and `homelinux.nix` on top |
+| `home/damien/` | Damien's settings: `base.nix` for all, then `minimal.nix` for a server, or `default.nix` where he works and `homelinux.nix` on top. `server-account.nix` is his account on a server |
 | `overlays/`, `pkgs/` | Overlays and the packages they add |
 | `docs/` | Longer guides: provisioning a Raspberry Pi, the VPN's clients, how a VPN server is hardened and upgrades itself |
 | `skills/` | AI skills, as `<area>/<name>/{meta.nix, body.md, references/}` |
@@ -51,7 +51,7 @@ A feature with a system part and a home part uses one option name for both
 | `my.hardened` | For a server on the internet: no sudo, root's password from sops, fail2ban, stricter kernel and firewall |
 | `my.autoUpgrade` | Daily upgrade to this flake's system, rolled back if its checks fail, also after a reboot |
 | `my.alerts.healthchecksIo` | Pings a healthchecks.io check when a unit succeeds, and reports one that fails |
-| `my.vpnServer` | `my.wireguard`, `my.hardened`, `my.autoUpgrade`, `my.alerts.healthchecksIo`, `my.sshServer` and `my.duckdns`: what a VPN server is made of |
+| `my.vpnServer` | `my.wireguard`, `my.hardened`, `my.autoUpgrade`, `my.alerts.healthchecksIo`, `my.sshServer`, `my.duckdns` and `my.nix.nixbuild`: what a VPN server is made of |
 
 | Home (`modules/home`) | |
 | --- | --- |

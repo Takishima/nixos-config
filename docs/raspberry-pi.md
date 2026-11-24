@@ -207,15 +207,15 @@ in CI and, for a Pi, `<name>-sd-image`, `provision-<name>` and
    | What | Option |
    | --- | --- |
    | The host name | `networking.hostName` |
-   | Who logs in | `users.users`, `my.hardened.sshUsers` |
+   | Who logs in | The import of `home/damien/server-account.nix`: Damien, with every key of `home/damien/ssh-keys.nix` |
    | The home network, which fail2ban spares | `my.hardened.neverBan` |
    | The VPN's port and subnet | `my.wireguard.port`, `my.wireguard.subnet` |
    | The hours it upgrades and reboots in | `my.autoUpgrade.dates`, `rebootWindow` |
    | The fan, if the Pi is in an Argon One case | `my.argonOne.enable` |
 
-   Keep `home/damien/minimal.nix` as home unless you work on the machine. For a
-   Pi 5, import `nixosModules.raspberry-pi-5`. It evaluates, but no Pi 5 has
-   booted it yet.
+   Keep the import of `home/damien/server-account.nix` unless you work on the
+   machine. For a Pi 5, import `nixosModules.raspberry-pi-5`. It evaluates, but
+   no Pi 5 has booted it yet.
 
    The flake only sees files git tracks: `git add hosts/<name>`.
 
