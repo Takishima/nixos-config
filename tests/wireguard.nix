@@ -85,6 +85,7 @@ in
       environment.systemPackages = [
         admin
         pkgs.jq
+        pkgs.sops
       ];
 
       my = {
@@ -229,6 +230,18 @@ in
       with subtest("a client is not kept when its secret cannot be written"):
           server.fail("cd /root/repo && wireguard-testpi --sops add nokey --endpoint vpn.example.org")
           server.succeed("test \"$(jq '.peers | has(\"nokey\")' /root/repo/hosts/testpi/wireguard.json)\" = false")
+
+      with subtest("with --sops, a client's preshared key is written to the sops file, and removed from it"):
+          as_host = "cd /root/repo && SOPS_AGE_KEY=$(ssh-to-age -private-key -i ${sshKeys.snakeOilEd25519PrivateKey})"
+          stored_psk = f"""{as_host} sops decrypt --extract '["wireguard"]["psk"]["camera"]' secrets/testpi.yaml"""
+          server.succeed(f"{as_host} wireguard-testpi --sops add camera -o /root/camera.conf")
+          psk = server.succeed("sed -n 's/^PresharedKey = //p' /root/camera.conf").strip()
+          stored = server.succeed(stored_psk).strip()
+          assert psk and stored == psk, stored
+          server.succeed(f"{as_host} wireguard-testpi --sops remove camera")
+          status, out = server.execute(f"{stored_psk} 2>&1")
+          assert status != 0, out
+          server.succeed("test \"$(jq '.peers | has(\"camera\")' /root/repo/hosts/testpi/wireguard.json)\" = false")
 
       with subtest("a removed client is gone, a new server starts empty"):
           server.succeed(
