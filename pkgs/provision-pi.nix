@@ -91,7 +91,7 @@ writeShellApplication {
 
     command -v op >/dev/null || die "the 1Password CLI, op, is not on PATH"
 
-    # The key is checked before anything is written. It only ever sits in memory.
+    # Check the key before writing anything; it only ever sits in memory.
     umask 077
     work=$(mktemp -d -p "''${XDG_RUNTIME_DIR:-/dev/shm}")
     mnt=$work/mnt
@@ -110,7 +110,7 @@ writeShellApplication {
       recipients=${lib.escapeShellArg (toString recipients)}
       case " $recipients " in
         *" $recipient "*) ;;
-        *) die "the key of $item cannot decrypt ${host}'s secrets: it is $recipient" ;;
+        *) die "the key of $item is $recipient, which ${host}'s secrets are not encrypted for: pass the item of ${host}'s host key, or add that recipient to .sops.yaml and run sops updatekeys secrets/${host}.yaml" ;;
       esac
     ''}
 
