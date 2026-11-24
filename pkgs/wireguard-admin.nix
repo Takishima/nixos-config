@@ -53,6 +53,8 @@ writeShellApplication {
                                 a new client; prints its configuration and QR code.
                                 The endpoint defaults to wireguard/endpoint in
                                 $secrets
+      disable <name>            shuts a client out, and keeps its address and keys
+      enable <name>
       remove <name>
       list
 
@@ -304,6 +306,18 @@ writeShellApplication {
           qrencode -t ansiutf8 <<<"$conf" >&2
         fi
         echo "$name is $address in $file." >&2
+        ;;
+
+      disable)
+        name=''${1:-}
+        existing_client "$name"
+        state | jq --arg name "$name" '.peers[$name].enable = false' | save
+        ;;
+
+      enable)
+        name=''${1:-}
+        existing_client "$name"
+        state | jq --arg name "$name" 'del(.peers[$name].enable)' | save
         ;;
 
       remove)

@@ -243,6 +243,16 @@ in
           assert status != 0, out
           server.succeed("test \"$(jq '.peers | has(\"camera\")' /root/repo/hosts/testpi/wireguard.json)\" = false")
 
+      with subtest("a disabled client stays in the file, shut out, until it is enabled"):
+          server.succeed(
+              "cd /root/repo && wireguard-testpi disable tablet",
+              "test \"$(jq .peers.tablet.enable /root/repo/hosts/testpi/wireguard.json)\" = false",
+              "cd /root/repo && wireguard-testpi list | grep -E 'tablet.*disabled'",
+              "cd /root/repo && wireguard-testpi enable tablet",
+              "test \"$(jq '.peers.tablet | has(\"enable\")' /root/repo/hosts/testpi/wireguard.json)\" = false",
+          )
+          server.fail("cd /root/repo && wireguard-testpi disable nobody")
+
       with subtest("a removed client is gone, a new server starts empty"):
           server.succeed(
               "cd /root/repo && wireguard-testpi remove tablet",
