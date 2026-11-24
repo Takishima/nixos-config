@@ -10,6 +10,8 @@ let
   bootAttempts = 3;
   skipDays = 7;
   report = "/var/lib/nixos-upgrade/report";
+  # The checks, then a rollback, which is another switch.
+  checksAndRollbackSeconds = cfg.settleSeconds + cfg.retrySeconds + 1800;
 
   # The files outlive an upgrade: the next system's script reads what this
   # one wrote. Keep their meaning when changing them.
@@ -17,6 +19,7 @@ let
     name = "nixos-upgrade-health";
     runtimeInputs = [
       pkgs.coreutils
+      pkgs.gnugrep
       pkgs.iproute2
       config.systemd.package
       config.nix.package.out
@@ -43,8 +46,8 @@ let
       current=$(readlink -f /run/current-system)
 
       runCheck() {
-        local name=$1 command=$2 output
-        case $'\n'"$skip"$'\n' in *$'\n'"$name"$'\n'*) return ;; esac
+        local exempt=$1 name=$2 command=$3 output
+        if [ -e "$exempt" ] && grep -qxF -e "$name" "$exempt"; then return; fi
         if ! output=$(timeout 60 ${pkgs.runtimeShell} -c "$command" 2>&1); then
           failed+="$name"$'\n'
           failures+="check failed: $name $output"$'\n'
@@ -54,13 +57,11 @@ let
       # Sets `failed` to the names of the checks that fail, except those
       # listed in the file $1, and `failures` to what they printed.
       runChecks() {
-        skip=""
-        if [ -e "$1" ]; then skip=$(cat "$1"); fi
         failed=""
         failures=""
         ${lib.concatStrings (
           lib.mapAttrsToList (name: command: ''
-            runCheck ${
+            runCheck "$1" ${
               lib.escapeShellArgs [
                 name
                 command
@@ -241,11 +242,7 @@ let
         exit 1
       }
 
-      case $1 in
-        remember) remember ;;
-        verify) verify ;;
-        confirm) confirm ;;
-      esac
+      "$1"
     '';
   };
 in
@@ -289,21 +286,12 @@ in
       description = ''
         Named shell commands that must all succeed after an upgrade, whether
         it switched the running system or rebooted for a new kernel. Each
-        command may take up to a minute, and finds coreutils, iproute2,
+        command may take up to a minute, and finds coreutils, grep, iproute2,
         systemd and Nix on its `PATH`. If one keeps failing for
         `retrySeconds`, the machine rolls back to the previous system,
-        rebooting if the upgrade did.
-
-        A check that already failed before the upgrade does not count: the
-        upgrade may be what fixes it.
-
-        A run that finds nothing to upgrade runs the checks as well. If one
-        fails, the run fails, and nothing is rolled back.
-
-        A rolled-back live upgrade is retried at the next run. So is one that
-        failed after rebooting, or that booted ${toString bootAttempts} times without passing. A
-        second failure in a row skips it for ${toString skipDays} days, unless the flake
-        produces a different system.
+        rebooting if the upgrade did. A check that already failed before
+        the upgrade does not count. docs/automatic-upgrades.md says when
+        an upgrade is tried again.
       '';
     };
 
@@ -366,8 +354,7 @@ in
           TimeoutStartSec = "12h";
           ExecStartPre = "${lib.getExe upgradeHealth} remember";
           ExecStopPost = "${lib.getExe upgradeHealth} verify";
-          # The checks, then a rollback, which is another switch.
-          TimeoutStopSec = cfg.settleSeconds + cfg.retrySeconds + 1800;
+          TimeoutStopSec = checksAndRollbackSeconds;
         };
       };
 
@@ -382,7 +369,7 @@ in
           Type = "oneshot";
           RemainAfterExit = true;
           ExecStart = "${lib.getExe upgradeHealth} confirm";
-          TimeoutStartSec = cfg.settleSeconds + cfg.retrySeconds + 1800;
+          TimeoutStartSec = checksAndRollbackSeconds;
         };
       };
 
