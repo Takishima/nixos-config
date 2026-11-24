@@ -1,6 +1,4 @@
-# A headless Raspberry Pi booting NixOS from its SD card, any model. The
-# flake pairs it with nixos-hardware's board module as
-# nixosModules.raspberry-pi-4 and raspberry-pi-5.
+# A headless Raspberry Pi booting NixOS from its SD card, any model.
 {
   config,
   lib,
@@ -37,12 +35,10 @@ in
       kernelParams = [
         "console=ttyS0,115200n8"
         "console=tty0"
-        # Reboot 10 seconds after a kernel panic. This also covers early
-        # boot, before the watchdog below is running.
+        # Covers early boot, before the watchdog below is running.
         "panic=10"
       ];
       blacklistedKernelModules = lib.optional (!cfg.wifi) "brcmfmac";
-      # Nobody is at the console to pick a generation from the menu.
       loader.timeout = 1;
     };
 
@@ -85,14 +81,12 @@ in
 
     zramSwap.enable = true;
 
-    # Nobody is there to pull the plug: the board's watchdog resets a Pi that
-    # hangs, or one that does not get through a reboot.
+    # The board's watchdog resets a Pi that hangs, also during a reboot.
     systemd.settings.Manager = {
       RuntimeWatchdogSec = "30s";
       RebootWatchdogSec = "10min";
     };
-    # Do not stop at an emergency prompt when a unit fails at boot: nobody
-    # is at the console. Keep booting so sshd and the upgrades start.
+    # Nobody is at the console: keep booting, so sshd and the upgrades start.
     systemd.enableEmergencyMode = false;
 
     services = {
@@ -114,8 +108,7 @@ in
 
     nix.settings = {
       max-substitution-jobs = 8;
-      # Collect garbage during a build when less than 1 GiB is free, until
-      # 3 GiB are. A full card would block upgrades.
+      # A full card would block upgrades.
       min-free = 1024 * 1024 * 1024;
       max-free = 3 * 1024 * 1024 * 1024;
       # CI puts the Pis' kernel in the first, and takes some paths from the second.

@@ -178,7 +178,6 @@
             }
           )
         )
-        # Writes a Pi's card: nix run .#provision-<name> -- <card> op://<vault>/<item>
         // lib.genAttrs' pis (
           host:
           lib.nameValuePair "provision-${host}" (
