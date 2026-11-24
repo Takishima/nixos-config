@@ -1,3 +1,4 @@
+# sops-nix, decrypting the host's sops file with an SSH key.
 {
   config,
   lib,
@@ -54,7 +55,7 @@ in
     file = lib.mkOption {
       type = lib.types.nullOr lib.types.path;
       default = if builtins.pathExists ownFile then ownFile else null;
-      defaultText = lib.literalExpression "secrets/<hostname>.yaml of this repository, if there is one";
+      defaultText = lib.literalMD "`secrets/<hostname>.yaml` of this repository, if there is one";
       description = "The host's sops file. It may not exist yet: see `has`.";
     };
 

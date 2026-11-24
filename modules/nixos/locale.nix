@@ -1,3 +1,4 @@
+# Time zone, locales and keyboard layouts.
 { config, lib, ... }:
 let
   cfg = config.my.locale;
@@ -7,6 +8,10 @@ in
     timeZone = lib.mkOption {
       type = lib.types.str;
       default = "UTC";
+      description = ''
+        Time zone, as a tz database name. `my.autoUpgrade.dates` and
+        `rebootWindow` are times in it.
+      '';
     };
     default = lib.mkOption {
       type = lib.types.str;
@@ -21,15 +26,18 @@ in
     consoleKeyMap = lib.mkOption {
       type = lib.types.str;
       default = "us";
+      description = "Keyboard layout of the text console.";
     };
     xkb = {
       layout = lib.mkOption {
         type = lib.types.str;
         default = "us";
+        description = "Keyboard layout of the graphical session, as an XKB layout.";
       };
       variant = lib.mkOption {
         type = lib.types.str;
         default = "";
+        description = "Variant of `layout`; empty for its default.";
       };
     };
   };

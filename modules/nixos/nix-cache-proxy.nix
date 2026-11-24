@@ -18,6 +18,7 @@ in
     port = lib.mkOption {
       type = lib.types.port;
       default = 4200;
+      description = "Port ncro listens on, on this machine only.";
     };
 
     upstreams = lib.mkOption {
