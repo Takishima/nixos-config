@@ -24,11 +24,13 @@
       autoUpgrade = {
         enable = lib.mkDefault true;
         # What must still work after an upgrade, or it is undone.
-        checks = [
-          "systemctl is-active --quiet sshd.service"
-          "ip route get 1.1.1.1"
-        ]
-        ++ lib.optional (config.my.secrets.has "wireguard/private_key") "systemctl is-active --quiet wireguard-wg0.service";
+        checks = {
+          sshd = "systemctl is-active --quiet sshd.service";
+          route = "ip route get 1.1.1.1";
+        }
+        // lib.optionalAttrs (config.my.secrets.has "wireguard/private_key") {
+          wireguard = "systemctl is-active --quiet wireguard-wg0.service";
+        };
       };
     };
   };
