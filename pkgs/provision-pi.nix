@@ -6,9 +6,11 @@
   coreutils,
   e2fsprogs,
   gnugrep,
+  gnused,
   openssh,
   parted,
   ssh-to-age,
+  systemd,
   util-linux,
   zstd,
 
@@ -24,9 +26,11 @@ writeShellApplication {
     coreutils
     e2fsprogs
     gnugrep
+    gnused
     openssh
     parted
     ssh-to-age
+    systemd
     util-linux
     zstd
   ];
@@ -66,8 +70,10 @@ writeShellApplication {
     card=$1
     item=''${2%/}
 
-    sudo=sudo
-    [ "$(id -u)" = 0 ] && sudo=
+    # sudo may reset PATH, and the tools have to be the ones packaged here.
+    as_root() {
+      if [ "$(id -u)" = 0 ]; then "$@"; else sudo env "PATH=$PATH" "$@"; fi
+    }
 
     image=${image}
     [ -d "$image" ] && image=$(echo "$image"/sd-image/*.img.zst)
@@ -90,7 +96,7 @@ writeShellApplication {
     work=$(mktemp -d -p "''${XDG_RUNTIME_DIR:-/dev/shm}")
     mnt=$work/mnt
     cleanup() {
-      if mountpoint -q "$mnt"; then $sudo umount "$mnt"; fi
+      if mountpoint -q "$mnt"; then as_root umount "$mnt"; fi
       rm -rf "$work"
     }
     trap cleanup EXIT
@@ -116,30 +122,30 @@ writeShellApplication {
     fi
 
     echo "Writing the image..."
-    zstd -dc "$image" | $sudo dd of="$card" bs=4M conv=fsync status=progress
-    $sudo partprobe "$card"
-    $sudo udevadm settle
+    zstd -dc "$image" | as_root dd of="$card" bs=4M conv=fsync status=progress
+    as_root partprobe "$card"
+    as_root udevadm settle
 
     root=$(lsblk -lnpo NAME "$card" | sed -n 3p)
     [ -b "$root" ] || die "no second partition on the card"
 
     # The image's root is packed full. Growing it now, as the Pi would on its
     # first boot, leaves room for the files.
-    echo ",+" | $sudo sfdisk --no-reread -N 2 "$card" >/dev/null
-    $sudo partprobe "$card"
-    $sudo udevadm settle
-    $sudo e2fsck -fp "$root" || [ $? -le 2 ]
-    $sudo resize2fs "$root"
+    echo ",+" | as_root sfdisk --no-reread -N 2 "$card" >/dev/null
+    as_root partprobe "$card"
+    as_root udevadm settle
+    as_root e2fsck -fp "$root" || [ $? -le 2 ]
+    as_root resize2fs "$root"
 
     mkdir "$mnt"
-    $sudo mount "$root" "$mnt"
+    as_root mount "$root" "$mnt"
 
     echo "Installing the host key..."
-    $sudo install -d -m 755 "$mnt/etc" "$mnt/etc/ssh"
-    $sudo install -m 600 -o 0 -g 0 "$work/key" "$mnt/etc/ssh/ssh_host_ed25519_key"
-    $sudo install -m 644 -o 0 -g 0 "$work/key.pub" "$mnt/etc/ssh/ssh_host_ed25519_key.pub"
+    as_root install -d -m 755 "$mnt/etc" "$mnt/etc/ssh"
+    as_root install -m 600 -o 0 -g 0 "$work/key" "$mnt/etc/ssh/ssh_host_ed25519_key"
+    as_root install -m 644 -o 0 -g 0 "$work/key.pub" "$mnt/etc/ssh/ssh_host_ed25519_key.pub"
 
-    $sudo umount "$mnt"
+    as_root umount "$mnt"
     sync
     echo "Done. The card is ready for ${host}."
   '';
