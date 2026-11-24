@@ -264,13 +264,20 @@ in CI and, for a Pi, `<name>-sd-image`, `provision-<name>` and
    Pi 5, import `nixosModules.raspberry-pi-5`. It evaluates, but no Pi 5 has
    booted it yet.
 
-2. Make its host key, and keep it in 1Password as an SSH Key item:
-   `ssh-keygen -t ed25519 -N "" -f ssh_host_ed25519_key`.
+   The flake only sees files git tracks: `git add hosts/<name>`.
+
+2. Make its host key in 1Password, so that no file ever holds the private half:
+
+   ```sh
+   op item create --category ssh --ssh-generate-key ed25519 --vault <vault> --title <name>
+   ```
+
 3. Add the key's public half to `.sops.yaml`, with a rule for
    `secrets/<name>.yaml` anchored like the others:
-   `ssh-to-age -i ssh_host_ed25519_key.pub`.
-4. Write `secrets/<name>.yaml` as in step 2 above. The host does not build
-   without the passwords.
+   `op read "op://<vault>/<name>/public_key" | ssh-to-age`.
+4. Write `secrets/<name>.yaml` as in step 2 above, then
+   `git add .sops.yaml secrets/<name>.yaml`. The host does not build without
+   the passwords.
 5. Give it a VPN. Empty `hosts/<name>/wireguard.json` to `{"peers": {}}`, then:
 
    ```sh
