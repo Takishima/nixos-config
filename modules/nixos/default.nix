@@ -1,5 +1,6 @@
 {
   imports = [
+    ./alerts
     ./audio.nix
     ./auto-upgrade.nix
     ./bluetooth.nix

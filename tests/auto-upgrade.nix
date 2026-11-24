@@ -125,6 +125,7 @@
         machine.succeed("rm /run/healthy")
         confirm_rolls_back()
         same(read("strikes"), "1")
+        assert "check failed: healthy" in read("report"), read("report")
 
     with subtest("after one failure it is tried again"):
         run_previous()

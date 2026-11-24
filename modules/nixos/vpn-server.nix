@@ -10,6 +10,7 @@ let
 in
 {
   imports = [
+    ./alerts/healthchecks-io.nix
     ./auto-upgrade.nix
     ./duckdns.nix
     ./hardened.nix
@@ -20,9 +21,9 @@ in
 
   options.my.vpnServer.enable = lib.mkEnableOption ''
     a VPN server reachable from the internet. Turns on `my.wireguard`,
-    `my.sshServer`, `my.hardened`, `my.duckdns` and `my.autoUpgrade`. The
-    host sets who logs in, its home network, and the VPN's port, subnet and
-    clients'';
+    `my.sshServer`, `my.hardened`, `my.duckdns`, `my.autoUpgrade` and
+    `my.alerts.healthchecksIo`. The host sets who logs in, its home network,
+    and the VPN's port, subnet and clients'';
 
   config = lib.mkIf config.my.vpnServer.enable {
     my = {
@@ -30,6 +31,7 @@ in
       hardened.enable = true;
       wireguard.enable = true;
       duckdns.enable = lib.mkDefault true;
+      alerts.healthchecksIo.enable = lib.mkDefault true;
       autoUpgrade = {
         enable = lib.mkDefault true;
         # Roll back unless the machine can still be logged into and can

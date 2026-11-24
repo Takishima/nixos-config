@@ -49,3 +49,21 @@ bad kernel would reboot the server twice every morning.
 - A commit that removes the checks. The upgraded system brings its own checks,
   so it is judged by what it says itself.
 - A broken `main`. The servers follow it whether CI passed or not.
+
+## What the alerts say
+
+With `healthchecks/url` in its sops file, a server pings a healthchecks.io check
+(`my.alerts.healthchecksIo`):
+
+| The check gets | When |
+| --- | --- |
+| A ping | An upgrade run ended well, even with nothing to upgrade |
+| A failure, with the failed checks | An upgrade failed or was rolled back |
+| Nothing, and raises the alert itself | The server is off, cut off, or does not boot |
+
+The ping says that the upgrade ran, not that the server is well all day: a VPN
+that stops between two upgrades is not reported. The check stays red while
+upgrades keep failing, the week one is left alone included.
+
+Each ping carries the end of the unit's log. Whoever has the ping URL can ping
+the check, and so hide a server that is down, but reads nothing with it.

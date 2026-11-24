@@ -50,7 +50,8 @@ A feature with a system part and a home part uses one option name for both
 | `my.wireguard` | A WireGuard server: port, subnet and clients declared, keys from sops |
 | `my.hardened` | For a server on the internet: no sudo, root's password from sops, fail2ban, stricter kernel and firewall |
 | `my.autoUpgrade` | Daily upgrade to this flake's system, rolled back if its checks fail, also after a reboot |
-| `my.vpnServer` | The four above, with `my.sshServer` and `my.duckdns`: what a VPN server is made of |
+| `my.alerts.healthchecksIo` | Pings a healthchecks.io check when a unit succeeds, and reports one that fails |
+| `my.vpnServer` | `my.wireguard`, `my.hardened`, `my.autoUpgrade`, `my.alerts.healthchecksIo`, `my.sshServer` and `my.duckdns`: what a VPN server is made of |
 
 | Home (`modules/home`) | |
 | --- | --- |
@@ -151,6 +152,7 @@ The system builds without the file. Each key turns its feature on:
 | `password_hash/root` | Root's password on a `my.hardened` host, the only way to root there | That host does not build |
 | `wifi/<name>` | Password of the network `my.wifi.networks.<name>` | No profile for that network |
 | `duckdns/token`, `duckdns/domains` | DuckDNS account token; its names, one per line | No DuckDNS updates |
+| `healthchecks/url` | Ping URL of the host's healthchecks.io check | Nothing is reported |
 | `wireguard/private_key` | The VPN server's private key | The VPN is not started |
 | `wireguard/psk/<client>` | Preshared key of the client `<client>` | That client connects without one |
 | `wireguard/endpoint` | Public name clients connect to, for `wireguard-<host> add` | `add` needs `--endpoint` |
@@ -207,7 +209,7 @@ for it, upgrading itself from this repository every day.
 | Put NixOS on a Pi, update it, or add another one | [docs/raspberry-pi.md](docs/raspberry-pi.md) |
 | Add, list or remove a VPN client | [docs/vpn-clients.md](docs/vpn-clients.md) |
 | Know how a VPN server is hardened, and what it trusts | [docs/server-hardening.md](docs/server-hardening.md) |
-| Know when a server rolls an upgrade back | [docs/automatic-upgrades.md](docs/automatic-upgrades.md) |
+| Know when a server rolls an upgrade back, and what its alerts mean | [docs/automatic-upgrades.md](docs/automatic-upgrades.md) |
 
 The commands for `rpizh`; `rpius` has the same under its name:
 
