@@ -68,9 +68,8 @@ A feature with a system part and a home part uses one option name for both
 
 `profiles/raspberry-pi`, exported with nixos-hardware's board module as
 `nixosModules.raspberry-pi-4` and `raspberry-pi-5`, goes on top of the
-modules: hardware, SD image, small-machine settings, and options of its own:
-`my.argonOne` (the case's fan), `my.raspberryPi.mdns` and
-`my.raspberryPi.wifi`.
+modules: hardware, SD image, small-machine settings, and `my.argonOne`, the
+fan of an Argon One case.
 
 ## Reuse from another flake
 

@@ -30,9 +30,8 @@
 - The board's watchdog resets a Pi that hangs for 30 seconds, or that does not
   get through a reboot in 10 minutes. A kernel panic restarts it, and a unit
   that fails at boot does not hold it at an emergency prompt.
-- Wi-Fi is off and its driver is not loaded. `my.raspberryPi.wifi` turns it on.
+- Wi-Fi is off and its driver is not loaded.
 - The Pi announces `rpizh.local` on the home network, not to VPN clients.
-  `my.raspberryPi.mdns = false` turns that off.
 - It upgrades itself every morning, and goes back when an upgrade leaves it
   out of reach: see [About the automatic upgrades](automatic-upgrades.md).
 
