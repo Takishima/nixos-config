@@ -22,6 +22,7 @@ Home-manager runs as a NixOS module, so one switch updates system and home.
 | `overlays/`, `pkgs/` | Overlays and the packages they add |
 | `docs/` | Longer guides: provisioning a Raspberry Pi, the VPN's clients, how a VPN server is hardened |
 | `skills/` | AI skills, as `<area>/<name>/{meta.nix, body.md, references/}` |
+| `.claude/skills/` | The skills an agent uses when working on this repository: pointers into `skills/` |
 | `secrets/` | sops files, encrypted for the key in `.sops.yaml` |
 
 A feature with a system part and a home part uses one option name for both
