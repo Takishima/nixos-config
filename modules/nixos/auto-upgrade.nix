@@ -252,10 +252,12 @@ in
 
     flake = lib.mkOption {
       type = lib.types.str;
-      default = "github:takishima/nixos-config";
+      default = "github:takishima/nixos-config/rpi";
       description = ''
         The flake to follow; the system is its `nixosConfigurations.<hostname>`.
         One anybody can read, as the machine fetches it without credentials.
+        The default is the branch CI moves to a commit of `main` once the
+        cache has its builds.
       '';
     };
 
