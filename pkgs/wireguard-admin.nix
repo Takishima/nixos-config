@@ -91,6 +91,10 @@ writeShellApplication {
     check_name() {
       [[ $1 =~ ^[A-Za-z0-9_.-]+$ ]] || die "a name takes letters, digits, _ . and - only: $1"
     }
+    existing_client() {
+      [ -n "$1" ] || die "$command takes the client's name"
+      [ "$(state | jq --arg name "$1" '.peers | has($name)')" = true ] || die "no client $1"
+    }
     sops_index() {
       jq -rn --arg path "wireguard/$1" '$path | split("/") | map("[" + tojson + "]") | join("")'
     }
@@ -102,11 +106,14 @@ writeShellApplication {
       pending+=("$1=$2")
     }
     drop_secret() {
-      if [ -n "$sops" ]; then
-        index=$(sops_index "$1")
-        sops unset "$secrets" "$index" || true
-      else
+      local index
+      if [ -z "$sops" ]; then
         echo "Remove wireguard/$1 from $secrets." >&2
+        return
+      fi
+      index=$(sops_index "$1")
+      if sops decrypt --extract "$index" "$secrets" >/dev/null 2>&1; then
+        sops unset "$secrets" "$index"
       fi
     }
     write_secrets() {
@@ -301,9 +308,9 @@ writeShellApplication {
 
       remove)
         name=''${1:-}
-        [ "$(state | jq --arg name "$name" '.peers | has($name)')" = true ] || die "no client ''${name:-without a name}"
-        state | jq --arg name "$name" 'del(.peers[$name])' | save
+        existing_client "$name"
         drop_secret "psk/$name"
+        state | jq --arg name "$name" 'del(.peers[$name])' | save
         ;;
 
       list)
