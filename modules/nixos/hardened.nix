@@ -176,6 +176,12 @@ in
       "kernel.unprivileged_bpf_disabled" = 1;
       "net.core.bpf_jit_harden" = 2;
       "kernel.yama.ptrace_scope" = 1;
+      # No kexec into another kernel, and no core dumps from setuid programs.
+      "kernel.kexec_load_disabled" = 1;
+      "fs.suid_dumpable" = 0;
+      # Refuse to open files and FIFOs that another user planted in /tmp.
+      "fs.protected_fifos" = 2;
+      "fs.protected_regular" = 2;
 
       # No rerouting on a stranger's say-so.
       "net.ipv4.conf.all.accept_redirects" = 0;
