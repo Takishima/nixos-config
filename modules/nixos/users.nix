@@ -1,6 +1,5 @@
-# Users are declared with the NixOS options (`users.users.<name>`,
-# `home-manager.users.<name>`). This gives every normal user their password
-# from the sops file, and sets home-manager up.
+# Gives every normal user of `users.users` their password from the sops file,
+# and sets home-manager up.
 {
   config,
   lib,

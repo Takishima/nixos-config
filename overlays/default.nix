@@ -1,3 +1,4 @@
+# The flake's overlays, and `default`, which applies them all.
 { inputs }:
 let
   overlays = {
@@ -6,7 +7,7 @@ let
     };
 
     ncro = final: _prev: {
-      # shortcut: upstream's package.nix links libsqlite3-sys against a sqlite it never declares.
+      # Upstream's package.nix links libsqlite3-sys against a sqlite it does not declare.
       ncro = (final.callPackage "${inputs.ncro}/nix/package.nix" { }).overrideAttrs (old: {
         buildInputs = old.buildInputs ++ [ final.sqlite ];
       });

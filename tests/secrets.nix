@@ -1,13 +1,13 @@
 # my.secrets, and the modules gating on it: fixtures/secrets.yaml is encrypted
 # to nixpkgs' test SSH key, standing in for the host key, and holds
 #   password_hash/alice: yescrypt of "sesame"
-#   password_hash/root: yescrypt of "open-sesame-root", and
+#   password_hash/root: yescrypt of "open-sesame-root"
 #   password_hash/carol: yescrypt of "carol" (for hardened.nix)
-# and nothing for bob.
 #   wifi/home: correct-horse-battery
-#   wireguard/private_key, wireguard/psk/phone: nixpkgs' test keys, and
+#   wireguard/private_key, wireguard/psk/phone: nixpkgs' test keys
 #   wireguard/endpoint: vpn.example.org (for wireguard.nix)
 #   healthchecks/url: http://monitor:8000/ping/snakeoil (for healthchecks-io.nix)
+# and nothing for bob.
 {
   self,
   checkPassword,
