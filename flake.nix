@@ -174,13 +174,7 @@
           lib.nameValuePair "wireguard-${host}" (
             pkgsFor.${system}.callPackage ./pkgs/wireguard-admin.nix {
               inherit host;
-              inherit ((configOf host).my.wireguard)
-                port
-                subnet
-                subnet6
-                dns
-                allowedIPs
-                ;
+              server = (configOf host).my.wireguard;
             }
           )
         )

@@ -1,6 +1,7 @@
 # my.wireguard and wireguard-<host>, with nixpkgs' WireGuard test keys.
 {
   self,
+  fixtureSecrets,
   sshKeys,
   lib,
   pkgs,
@@ -9,15 +10,6 @@
 let
   keys = import "${pkgs.path}/nixos/tests/wireguard/snakeoil-keys.nix";
   phoneKey = lib.trim keys.peer1.publicKey;
-
-  admin = pkgs.callPackage ../pkgs/wireguard-admin.nix {
-    host = "testpi";
-    port = 51820;
-    subnet = "10.6.0.0/24";
-    subnet6 = "fd00:6::/64";
-    dns = [ "10.6.0.1" ];
-    allowedIPs = [ "10.6.0.0/24" ];
-  };
 
   # As PiVPN writes it.
   oldServer = pkgs.writeText "wg0.conf" ''
@@ -70,50 +62,45 @@ in
   name = "wireguard";
 
   nodes = {
-    server = {
-      imports = [ self.nixosModules.wireguard ];
-
-      # As tight as a host can ask for.
-      networking.firewall.checkReversePath = "strict";
-
-      # The second network stands in for the server's home network.
-      virtualisation.vlans = [
-        1
-        2
-      ];
-
-      environment.systemPackages = [
-        admin
-        pkgs.jq
-        pkgs.sops
-      ];
-
-      my = {
-        secrets = {
-          file = ./fixtures/secrets.yaml;
-          sshKeyPath = "${sshKeys.snakeOilEd25519PrivateKey}";
-        };
-        wireguard = {
-          enable = true;
-          subnet = "10.6.0.0/24";
-          subnet6 = "fd00:6::/64";
-          inherit (imported) peers;
-        };
-      };
-    };
-
-    client =
-      { pkgs, ... }:
+    server =
+      { config, ... }:
       {
-        environment.systemPackages = [ pkgs.wireguard-tools ];
+        imports = [ self.nixosModules.wireguard ];
+
+        # As tight as a host can ask for.
+        networking.firewall.checkReversePath = "strict";
+
+        # The second network stands in for the server's home network.
+        virtualisation.vlans = [
+          1
+          2
+        ];
+
+        environment.systemPackages = [
+          (pkgs.callPackage ../pkgs/wireguard-admin.nix {
+            host = "testpi";
+            server = config.my.wireguard;
+          })
+          pkgs.jq
+          pkgs.sops
+        ];
+
+        my = {
+          secrets = fixtureSecrets;
+          wireguard = {
+            enable = true;
+            subnet = "10.6.0.0/24";
+            subnet6 = "fd00:6::/64";
+            dns = [ "10.6.0.1" ];
+            allowedIPs = [ "10.6.0.0/24" ];
+            inherit (imported) peers;
+          };
+        };
       };
 
+    client.environment.systemPackages = [ pkgs.wireguard-tools ];
     # A second client, which the test adds to the running server.
-    tablet =
-      { pkgs, ... }:
-      {
-        environment.systemPackages = [ pkgs.wireguard-tools ];
-      };
+    tablet.environment.systemPackages = [ pkgs.wireguard-tools ];
 
     home.virtualisation.vlans = [ 2 ];
   };
