@@ -20,18 +20,14 @@ let
     text = ''
       suffix=$1
       title=$2
-      umask 077
-      message=$(mktemp)
-      trap 'rm -f "$message"' EXIT
+      # Not as an argument, which every user can read: the URL is a secret.
       {
         echo "$title"
         tail -c 10000
-      } > "$message"
-      # On stdin: every user can read the arguments, and the URL is a secret.
-      printf 'url = "%s%s"\n' "$(cat ${url})" "$suffix" \
-        | curl --config - --fail --silent --show-error --output /dev/null \
-          --max-time 30 --retry 10 --retry-delay 30 --retry-all-errors \
-          --data-binary "@$message"
+      } | curl --config <(printf 'url = "%s%s"\n' "$(cat ${url})" "$suffix") \
+        --fail --silent --show-error --output /dev/null \
+        --max-time 30 --retry 10 --retry-delay 30 --retry-all-errors \
+        --data-binary @-
     '';
   };
 
