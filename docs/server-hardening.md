@@ -23,7 +23,8 @@ that covers, and what each server still trusts. The examples are for `rpizh`.
   run it, and shows it once.
 - The firewall drops packets from the wrong interface and logs what it refuses.
   Only root reads the kernel log and kernel addresses. The kernel ignores
-  redirects and source routes.
+  redirects and source routes, loads no other kernel with kexec, and writes no
+  core dump of a setuid program.
 - sshd has one host key, the Ed25519 one kept in 1Password, so a new card is the
   same host to its clients.
 - The board's watchdog resets a Pi that hangs for 30 seconds, or that does not
