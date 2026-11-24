@@ -4,9 +4,10 @@ This guide shows you how to move `rpizh`, a Raspberry Pi 4, from Raspberry Pi OS
 to NixOS. At the end the Pi runs the system of this repository, with the SSH
 host key and the VPN clients it had before.
 
-After the steps come [updates](#updates) and [another Pi](#another-pi). Two
-other pages go on from here: [How to manage the VPN's clients](vpn-clients.md)
-and [About the hardening of a VPN server](server-hardening.md).
+After the steps come [updates](#updates) and [another Pi](#another-pi). Three
+other pages go on from here: [How to manage the VPN's clients](vpn-clients.md),
+[About the hardening of a VPN server](server-hardening.md) and
+[About the automatic upgrades](automatic-upgrades.md).
 
 ## What is kept where
 
@@ -190,12 +191,17 @@ set the hours.
 
 The repository has to stay public: the Pi fetches it without credentials.
 
-After an upgrade that switched the running system, the Pi runs
-`my.autoUpgrade.checks`: sshd and the VPN run, root has its password, the next
-upgrade is scheduled, and it reaches this repository on GitHub. If one
-fails, the Pi switches back to the system it ran before and tries again the next
-day. `journalctl -u nixos-upgrade` says which check failed. An upgrade that
-reboots for a new kernel is not checked.
+After an upgrade, and after the reboot of one with a new kernel, the Pi runs
+`my.autoUpgrade.checks`. If one keeps failing for ten minutes, the Pi goes back
+to the system it ran before, with a reboot if the upgrade took one. To see which
+check failed, on the Pi:
+
+```sh
+journalctl -u nixos-upgrade -u nixos-upgrade-confirm
+```
+
+[About the automatic upgrades](automatic-upgrades.md) says what the checks are,
+when the Pi tries an upgrade again, and what they do not catch.
 
 To switch at once, wait for CI's run on `main`, which puts the kernel in the
 cache. Then, on the Pi:

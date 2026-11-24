@@ -6,43 +6,232 @@
 }:
 let
   cfg = config.my.autoUpgrade;
-  previous = "/run/nixos-upgrade-previous";
+  bootAttempts = 3;
+  skipDays = 7;
 
-  remember = pkgs.writeShellScript "nixos-upgrade-remember" ''
-    readlink /run/current-system > ${previous}
-  '';
+  # The files outlive an upgrade: the next system's script reads what this
+  # one wrote. Keep their meaning when changing them.
+  upgradeHealth = pkgs.writeShellApplication {
+    name = "nixos-upgrade-health";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.iproute2
+      config.systemd.package
+      config.nix.package.out
+    ];
+    # Not errexit: a rollback goes on past a step that fails.
+    bashOptions = [
+      "nounset"
+      "pipefail"
+    ];
+    text = ''
+      profile=/nix/var/nix/profiles/system
+      state=/var/lib/nixos-upgrade
+      systemBefore=/run/nixos-upgrade-previous
+      failingBefore=$state/failing-before
+      # A garbage collector root, so the system to roll back to stays.
+      goodLink=/nix/var/nix/gcroots/nixos-upgrade-good
+      awaitingReboot=$state/pending
+      bootsWithoutPassing=$state/boots
+      failedAfterReboot=$state/bad
+      failuresInARow=$state/strikes
+      bootsAfterRollback=$state/returns
 
-  # Runs when the upgrade ends, whether it failed or not.
-  verify = pkgs.writeShellScript "nixos-upgrade-verify" ''
-    export PATH=${
-      lib.makeBinPath [
-        pkgs.coreutils
-        pkgs.iproute2
-        config.systemd.package
-        config.nix.package.out
-      ]
-    }
-    was=$(cat ${previous}) || exit 0
-    [ "$(readlink /run/current-system)" != "$was" ] || exit 0
+      mkdir -p "$state"
+      current=$(readlink -f /run/current-system)
 
-    sleep ${toString cfg.settleSeconds}
-    failed=
-    ${lib.concatStrings (
-      lib.mapAttrsToList (name: check: ''
-        if ! (${check}) > /dev/null; then
-          echo "check failed: "${lib.escapeShellArg name}
-          failed=1
+      runCheck() {
+        local name=$1 command=$2 output
+        case $'\n'"$skip"$'\n' in *$'\n'"$name"$'\n'*) return ;; esac
+        if ! output=$(timeout 60 ${pkgs.runtimeShell} -c "$command" 2>&1); then
+          failed+="$name"$'\n'
+          failures+="check failed: $name $output"$'\n'
         fi
-      '') cfg.checks
-    )}
-    [ -n "$failed" ] || exit 0
+      }
 
-    echo "the upgraded system fails its checks: going back to $was"
-    nix-env --profile /nix/var/nix/profiles/system --set "$was"
-    # Without the boot loader if that part fails: the running system matters first.
-    "$was/bin/switch-to-configuration" switch || "$was/bin/switch-to-configuration" test
-    exit 1
-  '';
+      # Sets `failed` to the names of the checks that fail, except those
+      # listed in the file $1, and `failures` to what they printed.
+      runChecks() {
+        skip=""
+        if [ -e "$1" ]; then skip=$(cat "$1"); fi
+        failed=""
+        failures=""
+        ${lib.concatStrings (
+          lib.mapAttrsToList (name: command: ''
+            runCheck ${
+              lib.escapeShellArgs [
+                name
+                command
+              ]
+            }
+          '') cfg.checks
+        )}
+        [ -z "$failures" ]
+      }
+
+      healthy() {
+        local deadline=$((SECONDS + ${toString cfg.retrySeconds}))
+        sleep ${toString cfg.settleSeconds}
+        until runChecks "$failingBefore"; do
+          if [ "$SECONDS" -ge "$deadline" ]; then
+            printf %s "$failures"
+            return 1
+          fi
+          sleep 15
+        done
+      }
+
+      is() {
+        [ -e "$2" ] && [ "$1" = "$(cat "$2")" ]
+      }
+
+      count() {
+        if [ -e "$1" ]; then cat "$1"; else echo 0; fi
+      }
+
+      # One failure may be a network outage: only the second in a row counts.
+      skipped() {
+        is "$1" "$failedAfterReboot" && [ "$(count "$failuresInARow")" -ge 2 ] \
+          && [ $(($(date +%s) - $(stat -c %Y "$failedAfterReboot"))) -lt ${toString (skipDays * 86400)} ]
+      }
+
+      remember() {
+        echo "$current" > "$systemBefore"
+
+        if runChecks /dev/null; then
+          rm -f "$failingBefore"
+        else
+          printf %s "$failed" > "$failingBefore"
+          echo "already failing before the upgrade, so not held against it:"
+          printf %s "$failures"
+        fi
+
+        if [ ! -e "$goodLink" ] || ! { is "$current" "$awaitingReboot" || is "$current" "$failedAfterReboot"; }; then
+          ln -sfn "$current" "$goodLink"
+        fi
+      }
+
+      # Runs when the upgrade ends, whether it failed or not.
+      verify() {
+        local before good new
+        before=$(cat "$systemBefore") || exit 0
+        # The run that brings this module in has no link yet.
+        if [ ! -e "$goodLink" ]; then ln -sfn "$before" "$goodLink"; fi
+        good=$(readlink "$goodLink") || exit 0
+        new=$(readlink -f "$profile")
+
+        if [ "$current" != "$before" ]; then
+          if healthy; then
+            ln -sfn "$current" "$goodLink"
+            rm -f "$awaitingReboot" "$bootsWithoutPassing"
+            exit 0
+          fi
+          echo "the upgraded system fails its checks: rolling back to $good"
+          if ! nix-env --profile "$profile" --set "$good"; then
+            echo "could not reset the system profile"
+          fi
+          # The running system matters more than the boot loader.
+          "$good/bin/switch-to-configuration" switch || "$good/bin/switch-to-configuration" test
+          echo "rolled back to $good:"
+          printf %s "$failures"
+          exit 1
+        fi
+
+        if is "$current" "$failedAfterReboot"; then
+          echo "still running $current, which failed its checks"
+          exit 1
+        fi
+
+        if [ "$new" = "$current" ] || [ ! -x "$new/bin/switch-to-configuration" ]; then
+          exit 0
+        fi
+
+        # The new system needs a reboot, which nixos-upgrade may have scheduled.
+        if skipped "$new"; then
+          echo "$new failed its checks after a reboot, twice: staying on $good"
+          if ! shutdown -c; then echo "no reboot was scheduled"; fi
+          if ! { nix-env --profile "$profile" --set "$good" && "$good/bin/switch-to-configuration" boot; }; then
+            echo "could not make $good the boot default again"
+          fi
+          exit 1
+        fi
+        rm -f "$bootsWithoutPassing"
+        if ! echo "$new" > "$awaitingReboot"; then
+          echo "could not record $new: it will not be checked after the reboot"
+          exit 1
+        fi
+      }
+
+      confirm() {
+        local boots good reason
+        # A system switched to by hand is not judged.
+        if [ "$(readlink -f /run/booted-system)" != "$current" ]; then exit 0; fi
+        if ! is "$current" "$failedAfterReboot"; then rm -f "$bootsAfterRollback"; fi
+
+        if is "$current" "$awaitingReboot"; then
+          boots=$(($(count "$bootsWithoutPassing") + 1))
+          echo "$boots" > "$bootsWithoutPassing"
+          sync "$bootsWithoutPassing"
+
+          if [ "$boots" -gt ${toString bootAttempts} ]; then
+            reason="booted ${toString bootAttempts} times without passing its checks"
+          elif healthy; then
+            ln -sfn "$current" "$goodLink"
+            rm -f "$awaitingReboot" "$bootsWithoutPassing" "$failedAfterReboot" "$failuresInARow"
+            exit 0
+          else
+            reason=$failures
+          fi
+        elif is "$current" "$failedAfterReboot"; then
+          # The rollback was cut short, or the boot loader ignores it.
+          boots=$(($(count "$bootsAfterRollback") + 1))
+          echo "$boots" > "$bootsAfterRollback"
+          sync "$bootsAfterRollback"
+          if [ "$boots" -gt 2 ]; then
+            echo "booted $current again and again, although it failed its checks: staying on it"
+            exit 1
+          fi
+          reason="it failed its checks before, and was booted again"
+        else
+          exit 0
+        fi
+
+        good=""
+        if [ -e "$goodLink" ]; then good=$(readlink "$goodLink"); fi
+        if [ ! -x "$good/bin/switch-to-configuration" ] || [ "$good" = "$current" ]; then
+          echo "$current fails its checks, and there is no system to roll back to:"
+          printf '%s\n' "$reason"
+          exit 1
+        fi
+
+        echo "$current fails its checks: rebooting into $good"
+        printf '%s\n' "$reason"
+        if is "$current" "$failedAfterReboot"; then
+          echo $(($(count "$failuresInARow") + 1)) > "$failuresInARow"
+        else
+          echo 1 > "$failuresInARow"
+        fi
+        echo "$current" > "$failedAfterReboot"
+
+        # $awaitingReboot stays until the rollback holds, so that a boot
+        # after a rollback cut short checks again.
+        if nix-env --profile "$profile" --set "$good" && "$good/bin/switch-to-configuration" boot; then
+          rm -f "$awaitingReboot" "$bootsWithoutPassing"
+          systemctl --no-block reboot
+        else
+          echo "could not make $good the boot default: switching to it without a reboot"
+          "$good/bin/switch-to-configuration" test
+        fi
+        exit 1
+      }
+
+      case $1 in
+        remember) remember ;;
+        verify) verify ;;
+        confirm) confirm ;;
+      esac
+    '';
+  };
 in
 {
   options.my.autoUpgrade = {
@@ -80,17 +269,36 @@ in
         sshd = "systemctl is-active --quiet sshd.service";
       };
       description = ''
-        Named shell commands that must all succeed once an upgrade has switched the
-        running system. If one fails, the machine switches back to the system
-        it ran before, and tries the upgrade again at the next run. They are
-        not run after an upgrade that reboots.
+        Named shell commands that must all succeed after an upgrade, whether
+        it switched the running system or rebooted for a new kernel. Each
+        command may take up to a minute, and finds coreutils, iproute2,
+        systemd and Nix on its `PATH`. If one keeps failing for
+        `retrySeconds`, the machine rolls back to the previous system,
+        rebooting if the upgrade did.
+
+        A check that already failed before the upgrade does not count: the
+        upgrade may be what fixes it.
+
+        A rolled-back live upgrade is retried at the next run. So is one that
+        failed after rebooting, or that booted ${toString bootAttempts} times without passing. A
+        second failure in a row skips it for ${toString skipDays} days, unless the flake
+        produces a different system.
       '';
     };
 
     settleSeconds = lib.mkOption {
       type = lib.types.ints.unsigned;
       default = 30;
-      description = "How long to wait after the switch before running `checks`.";
+      description = "Seconds to wait after the switch or boot before running `checks`.";
+    };
+
+    retrySeconds = lib.mkOption {
+      type = lib.types.ints.unsigned;
+      default = 600;
+      description = ''
+        How long to keep retrying failed `checks`, every 15 seconds, before
+        rolling back. The default leaves time for a slow network to come up.
+      '';
     };
 
     rebootWindow = lib.mkOption {
@@ -104,6 +312,19 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    assertions = lib.optional (cfg.checks != { } && cfg.allowReboot) {
+      assertion = lib.all (step: lib.hasInfix step config.systemd.services.nixos-upgrade.script) [
+        "nixos-rebuild boot"
+        "shutdown -r +1"
+      ];
+      message = ''
+        my.autoUpgrade: the nixos-upgrade service of nixpkgs no longer runs
+        `nixos-rebuild boot` and then `shutdown -r +1`. The checks rely on
+        both to record an upgrade before its reboot: adapt
+        modules/nixos/auto-upgrade.nix.
+      '';
+    };
+
     system.autoUpgrade = {
       enable = true;
       flake = "${cfg.flake}#${config.networking.hostName}";
@@ -111,11 +332,31 @@ in
       randomizedDelaySec = "30min";
     };
 
-    systemd.services.nixos-upgrade.serviceConfig = lib.mkIf (cfg.checks != { }) {
-      ExecStartPre = remember;
-      ExecStopPost = verify;
-      # Going back is another switch.
-      TimeoutStopSec = "30min";
+    systemd.services = lib.mkIf (cfg.checks != { }) {
+      nixos-upgrade = {
+        after = [ "nixos-upgrade-confirm.service" ];
+        serviceConfig = {
+          ExecStartPre = "${lib.getExe upgradeHealth} remember";
+          ExecStopPost = "${lib.getExe upgradeHealth} verify";
+          # The checks, then a rollback, which is another switch.
+          TimeoutStopSec = cfg.settleSeconds + cfg.retrySeconds + 1800;
+        };
+      };
+
+      # Not after the network: it has to run even if that never comes up.
+      nixos-upgrade-confirm = {
+        description = "Check the system an upgrade rebooted into";
+        wantedBy = [ "multi-user.target" ];
+        # A switch must neither run it again nor stop it during a rollback.
+        restartIfChanged = false;
+        unitConfig.X-StopOnRemoval = false;
+        serviceConfig = {
+          Type = "oneshot";
+          RemainAfterExit = true;
+          ExecStart = "${lib.getExe upgradeHealth} confirm";
+          TimeoutStartSec = cfg.settleSeconds + cfg.retrySeconds + 1800;
+        };
+      };
     };
   };
 }
