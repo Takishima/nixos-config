@@ -84,7 +84,7 @@ writeShellApplication {
     }
     trap cleanup EXIT
 
-    op read "$item/private key?ssh-format=openssh" >"$work/key" ||
+    op read "$item/private_key?ssh-format=openssh" >"$work/key" ||
       die "cannot read the private key of $item"
     ssh-keygen -y -f "$work/key" >"$work/key.pub" || die "$item does not hold an SSH private key"
     grep -q '^ssh-ed25519 ' "$work/key.pub" || die "the key of $item is not an Ed25519 key"
