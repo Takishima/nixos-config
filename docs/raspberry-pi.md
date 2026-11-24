@@ -1,15 +1,17 @@
-# Provisioning a Raspberry Pi
+# How to provision a Raspberry Pi
 
-How to take `rpizh`, a Raspberry Pi 4, from Raspberry Pi OS to NixOS without
-losing its identity or its VPN clients. The last section adapts it to another
-Pi.
+This guide shows you how to move `rpizh`, a Raspberry Pi 4, from Raspberry Pi OS
+to NixOS. At the end the Pi runs the system of this repository, with the SSH
+host key and the VPN clients it had before.
 
-Hardware support is nixos-hardware's `raspberry-pi-4`: vendor kernel, firmware
-partition, U-Boot. `config.txt` is set under `hardware.raspberry-pi.configtxt`.
-`nixosModules.raspberry-pi-5` is the same for a Pi 5; it evaluates, but no Pi 5
-has booted it yet.
+After the steps come the things you do later: [updates](#updates), the
+[VPN's clients](#vpn) and [another Pi](#another-pi). [Security](#security)
+says how the Pi is hardened, and why.
 
 ## What is kept where
+
+Nothing the Pi needs is only on its card. A new card written from this
+repository, with the host key, is the same machine.
 
 | What | Where |
 | --- | --- |
@@ -20,8 +22,13 @@ has booted it yet.
 | Secrets: passwords, the VPN's keys, DuckDNS, Wi-Fi | `secrets/rpizh.yaml`, encrypted for that host key |
 | The VPN's clients: names, public keys, addresses | `hosts/rpizh/wireguard.json` |
 
-Nothing the Pi needs is only on its card: a new card from this repository
-and the host key is the same machine.
+## Before you start
+
+You need a machine with Nix and a checkout of this repository, and on it `sops`,
+`ssh-to-age` and the 1Password CLI, signed in. `homelinux` has them all.
+
+Run every command of this guide at the root of the checkout, unless the step
+names the Pi.
 
 ## 1. Save what the old system holds
 
@@ -33,80 +40,70 @@ sudo cat /etc/wireguard/wg0.conf                # the VPN server and its clients
 sudo cat /etc/duckdns/duck.sh                   # the DuckDNS names and token, for the secrets
 ```
 
-Take the Ed25519 host key, not the RSA or ECDSA one, and not a key from
-`~/.ssh`. Copy `wg0.conf` to the machine with this repository, and delete it
-once step 3 is done: it holds the server's private key. A tar of the whole
-`/etc/wireguard` does as well.
+- Take the Ed25519 host key, not the RSA or ECDSA one, and not a key from
+  `~/.ssh`.
+- Copy `wg0.conf` to the checkout. A tar of the whole `/etc/wireguard` does as
+  well. Delete it once step 3 is done: it holds the server's private key.
 
 ## 2. Secrets
 
-The secrets file is encrypted for the host key. `.sops.yaml` lists its public
-half as an age recipient:
+1. Add the host key's public half to `.sops.yaml`, as an age recipient:
 
-```sh
-op read "op://<vault>/<item>/public_key" | ssh-to-age
-```
+   ```sh
+   op read "op://<vault>/<item>/public_key" | ssh-to-age
+   ```
 
-Edit the file from any machine, with the private key read from 1Password:
+2. Give `sops` the private half, read from 1Password. The later steps use it
+   too:
 
-```sh
-SOPS_AGE_KEY=$(op read "op://<vault>/<item>/private_key?ssh-format=openssh" | ssh-to-age -private-key) \
-  sops secrets/rpizh.yaml
-```
+   ```sh
+   export SOPS_AGE_KEY=$(op read "op://<vault>/<item>/private_key?ssh-format=openssh" | ssh-to-age -private-key)
+   ```
 
-| Key | Holds |
-| --- | --- |
-| `wireguard/private_key` | The VPN server's private key; without it the VPN is not started |
-| `wireguard/psk/<client>` | The preshared key of the client `<client>`, if it has one |
-| `wireguard/endpoint` | The public name clients connect to; only `wireguard-rpizh add` reads it |
-| `duckdns/token` | The DuckDNS account's token |
-| `duckdns/domains` | Its names without `.duckdns.org`, one per line |
-| `password_hash/<user>` | Login password of `<user>`, from `mkpasswd -m yescrypt` or the old `/etc/shadow`: required for every user |
-| `password_hash/root` | Root's password, the only way to root: required |
-| `wifi/<name>` | Password of the network `my.wifi.networks.<name>`, with `my.raspberryPi.wifi` |
+3. Write the secrets with `sops secrets/rpizh.yaml`. The table in the
+   [README](../README.md#secrets) says what each key holds. A VPN server needs:
+
+   | Key | |
+   | --- | --- |
+   | `password_hash/root` | Required |
+   | `password_hash/<user>` | Required, for every user |
+   | `duckdns/token`, `duckdns/domains` | For DuckDNS |
+   | `wireguard/endpoint` | For `wireguard-rpizh add` |
+   | `wireguard/private_key`, `wireguard/psk/<client>` | Step 3 writes them |
+   | `wifi/<name>` | Only with `my.raspberryPi.wifi` |
 
 Every value must be a string. One that is not makes the Pi reject the whole
-file. A `/` is a nested key:
-
-```yaml
-password_hash:
-    damien: $y$j9T$...
-```
+file.
 
 To keep a password of the old system, take its hash there:
 `sudo getent shadow <user> | cut -d: -f2`.
 
-`wireguard/private_key` and `wireguard/psk` are written by the next step.
-
 ## 3. Bring the VPN over
 
-The VPN no longer lives in `/etc/wireguard`. Its port and subnet are options
-of `my.wireguard`, its clients are in `hosts/rpizh/wireguard.json`, and its
-keys in the secrets. `wireguard-rpizh` reads the old server's `wg0.conf`,
-PiVPN's or any other, and writes both, at the root of the repository:
+`wireguard-rpizh` reads the old server's `wg0.conf`, PiVPN's or any other. It
+writes the clients to `hosts/rpizh/wireguard.json` and the keys to the secrets:
 
 ```sh
-export SOPS_AGE_KEY=$(op read "op://<vault>/<item>/private_key?ssh-format=openssh" | ssh-to-age -private-key)
 nix run .#wireguard-rpizh -- --sops import wg0.conf
 git add hosts/rpizh/wireguard.json secrets/rpizh.yaml
 ```
 
-Every client keeps its key, its preshared key and its address, so none has
-to be set up again; one PiVPN had disabled stays disabled (`"enable": false`).
-Without `--sops` the keys are printed instead, to paste into `sops
-secrets/rpizh.yaml`.
+Every client keeps its key, its preshared key and its address, so none has to
+be set up again. A client PiVPN had disabled stays disabled
+(`"enable": false`). Without `--sops`, the command prints the keys for you to
+paste into `sops secrets/rpizh.yaml`.
 
-It refuses a server whose address is not the first of `my.wireguard.subnet`,
-and says so if the old port is not `my.wireguard.port`: set both in
-`hosts/rpizh/default.nix` to what the old server has, since that is what the
-clients and the router's port forward expect.
+If the command refuses the server's address or reports another port, set
+`my.wireguard.subnet` and `my.wireguard.port` in `hosts/rpizh/default.nix` to
+what the old server has. The server's address must be the first of the subnet.
+The clients and the router's port forward expect both.
 
 ## 4. Build the image
 
-On an x86 machine, Nix has to be allowed to build for aarch64:
+On an x86 machine, first allow Nix to build for aarch64:
 
-- NixOS: `boot.binfmt.emulatedSystems = [ "aarch64-linux" ];` (`homelinux`
-  has it).
+- NixOS: `boot.binfmt.emulatedSystems = [ "aarch64-linux" ];`. `homelinux` has
+  it.
 - Elsewhere: install the distribution's static QEMU user emulation, add
   `extra-platforms = aarch64-linux` to `/etc/nix/nix.conf` and restart the Nix
   daemon.
@@ -117,10 +114,9 @@ nix build .#packages.aarch64-linux.rpizh-sd-image
 
 The build does not read the secrets; the Pi decrypts them itself.
 
-cache.nixos.org does not have the kernel. CI builds it on an ARM runner, for
-pull requests and for `main`, and pushes it to `dn-personal.cachix.org`.
-Without it the build compiles for hours. A machine
-that does not list that cache can name it:
+cache.nixos.org does not have the Pi's kernel. CI builds it and pushes it to
+`dn-personal.cachix.org`. If your machine does not list that cache, name it, or
+the build compiles for hours:
 
 ```sh
 nix build .#packages.aarch64-linux.rpizh-sd-image \
@@ -130,22 +126,19 @@ nix build .#packages.aarch64-linux.rpizh-sd-image \
 
 ## 5. Write the card
 
-One command builds the image, writes it, and puts the host key on the card.
-It takes the card and the 1Password item holding the host key:
+One command builds the image, writes it, and puts the host key on the card. It
+takes the card and the 1Password item that holds the host key:
 
 ```sh
 nix run .#provision-rpizh -- /dev/<card> "op://<vault>/<item>"
 ```
 
-It needs the 1Password CLI, signed in, and asks for sudo. Before writing
-anything it checks that the card is a whole, unmounted disk and that the key is
-the one the secrets are encrypted for, then asks you to type the device name.
-The key goes from 1Password to the card without touching the disk.
+The command asks for sudo. Before it writes anything, it checks that the card
+is a whole, unmounted disk and that the key is the one the secrets are encrypted
+for. Then it asks you to type the device name. The key goes from 1Password to
+the card without touching the disk.
 
-With the key in place the Pi decrypts its secrets on the first boot, the VPN's
-among them, and other machines see the host they already know.
-
-Never put the private key in the configuration or in the image build: it would
+Never put the private key in the configuration or in the image build. It would
 land in the Nix store, readable by every user and pushed to the cache.
 
 <details>
@@ -172,104 +165,55 @@ sudo umount /mnt
 
 ## 6. First boot
 
-The root partition grows to fill the card. Log in over SSH with a key from
-`users.users` in `hosts/rpizh/default.nix`; passwords are not accepted over SSH. Then check:
+1. On the router, reserve the address DHCP gives the Pi.
+2. Log in over SSH, with a key from `users.users` in `hosts/rpizh/default.nix`.
+   SSH does not accept passwords.
+3. Check the VPN:
 
-```sh
-systemctl status wireguard-wg0    # the VPN is up
-su -c 'wg show wg0'               # the old clients are there, and connect
-```
+   ```sh
+   systemctl status wireguard-wg0    # the VPN is up
+   su -c 'wg show wg0'               # the old clients are there, and connect
+   ```
 
 If the card booted before the key was on it, the Pi made a new host key and
-cannot read its secrets: the VPN is down and root has no password, so nobody
-can become root. Put the key on the card from another machine, as in step 5,
-or write the card again.
+cannot read its secrets. The VPN is down and root has no password, so nobody can
+become root. Put the key on the card from another machine, as in "The same by
+hand" of step 5, or write the card again.
 
-The Pi asks DHCP for its address: reserve one for it on the router, as
-PiVPN was told at its install.
+## Updates
 
-## 7. Updates
+The Pi follows `main` of this repository by itself (`my.autoUpgrade`), so a
+change reaches it by being merged. Every morning around 06:00 it switches to
+`github:takishima/nixos-config#rpizh`, and reboots before 08:00 if the kernel
+changed. `my.autoUpgrade.dates` and `rebootWindow` in `hosts/rpizh/default.nix`
+set the hours.
 
-The Pi follows `main` of this repository by itself (`my.autoUpgrade`): every
-morning around 06:00 it switches to `github:takishima/nixos-config#rpizh`, and
-reboots before 08:00 if the kernel changed. That is midnight on the US east
-coast, after the VPN's evening use there; `my.autoUpgrade.dates` and
-`rebootWindow` in `hosts/rpizh/default.nix` set it. So a change reaches it by being
-merged. The repository has to be public for that: the Pi fetches it without
-credentials.
+The repository has to stay public: the Pi fetches it without credentials.
 
-After an upgrade that switched the running system, the Pi checks that sshd
-and the VPN run and that it has a route out (`my.autoUpgrade.checks`). If
-not, it switches back to the system it ran before and tries again the next
-day; `journalctl -u nixos-upgrade` says which check failed. An upgrade that
+After an upgrade that switched the running system, the Pi runs
+`my.autoUpgrade.checks`: sshd and the VPN run, and it has a route out. If one
+fails, the Pi switches back to the system it ran before and tries again the next
+day. `journalctl -u nixos-upgrade` says which check failed. An upgrade that
 reboots for a new kernel is not checked.
 
-To switch at once, on the Pi, as root:
+To switch at once, wait for CI's run on `main`, which puts the kernel in the
+cache. Then, on the Pi:
 
 ```sh
 su -
 nixos-rebuild switch --refresh --flake github:takishima/nixos-config#rpizh
 ```
 
-Root builds from the repository, never from a checkout in a home: whoever
-could write there would decide what root runs next.
+You cannot push a system built on another machine to the Pi. It only takes
+paths signed by a cache it knows: see [Security](#security).
 
-The kernel comes from the CI cache, so little is built.
-CI fills it for `main`, so wait for its run before switching by hand.
-
-The boot loader in the Pi's EEPROM is not updated by any of this. Its tool
-is not installed: `nix shell nixpkgs#raspberrypi-eeprom -c rpi-eeprom-update`,
-as root.
-
-A system built on another machine cannot be pushed to the Pi as it is:
-nobody there is a trusted Nix user, so it only takes paths signed by a cache
-it knows. See "Security" below.
-
-## Security
-
-The Pi is reachable from the internet, so `my.hardened`, which `my.vpnServer`
-turns on, holds it tighter than `homelinux`:
-
-- SSH takes keys only, three tries, and only `my.hardened.sshUsers`. fail2ban bans an
-  address for an hour after two failures in 15 minutes, twice as long each
-  time it comes back, up to a week. Addresses of the home network
-  (`my.hardened.neverBan`, 10.x.x.x here) are never banned; VPN clients are.
-- There is no `sudo`. Root is `su -` from `damien`'s session, with root's own
-  password: a stolen SSH key is not root. It is not a wall either: whoever
-  has that session can wait for the password to be typed in it.
-- Users, passwords and SSH keys are only what the configuration and the sops
-  file say: `~/.ssh/authorized_keys` is not read.
-- Nobody is a trusted Nix user: that is root without a password. Only root
-  and `sshUsers` talk to the Nix daemon, and root builds from the repository
-  only.
-- No client's private key is on the Pi. `wireguard-rpizh add` makes it where
-  you run it, and shows it once.
-- The firewall drops packets from the wrong interface and logs what it
-  refuses. Kernel logs and addresses are root's; redirects and source routes
-  are ignored.
-- sshd has one host key, the Ed25519 one kept in 1Password, so a new card
-  is the same host to its clients.
-- The board's watchdog resets a Pi that hangs for 30 seconds, or that does
-  not get through a reboot in 10 minutes.
-- Wi-Fi is off: the driver is not loaded (`my.raspberryPi.wifi` turns it on).
-- `rpizh.local` is announced on the home network, not to VPN clients
-  (`my.raspberryPi.mdns = false` turns it off).
-- It upgrades itself every morning: step 7.
-
-A host that would break one of these does not build: `my.hardened` asserts
-that somebody in `sshUsers` has a key, that every user and root has a
-password in the sops file, and that no Nix user is trusted.
-
-What the Pi trusts in turn: this repository's `main`, which it follows, and
-the caches `dn-personal.cachix.org`, where its kernel comes from, and
-`nix-community.cachix.org`. Whoever can push to one of them is root on the Pi. The CI workflow that fills the cache pins
-its actions by commit for that reason.
+None of this updates the boot loader in the Pi's EEPROM. To do that, as root:
+`nix shell nixpkgs#raspberrypi-eeprom -c rpi-eeprom-update`.
 
 ## VPN
 
-The Pi runs a WireGuard server, `networking.wireguard`, set by `my.wireguard`.
-`wireguard-rpizh` keeps its clients, from a checkout of this repository on
-any machine, at its root:
+The Pi runs a WireGuard server, set by `my.wireguard`. `wireguard-rpizh` manages
+its clients, from the checkout on any machine:
 
 ```sh
 nix run .#wireguard-rpizh -- add phone      # a new client
@@ -277,18 +221,20 @@ nix run .#wireguard-rpizh -- list
 nix run .#wireguard-rpizh -- remove phone
 ```
 
-`add` gives the client the next free address, and prints its configuration
-and the QR code for the phone app. The endpoint in it is `wireguard/endpoint`
-of the sops file, read with `SOPS_AGE_KEY` as in step 3, or `--endpoint
-<public name>`. Nothing else keeps the client's private
-key: scan it then, or have it written with `-o phone.conf`. A client that
-made its own key pair hands in the public one, `--public-key <key>`, and
-keeps the other.
+Each command changes `hosts/rpizh/wireguard.json`. With `--sops` it also changes
+the preshared key in `secrets/rpizh.yaml`, and needs `SOPS_AGE_KEY` as in
+step 2. Without `--sops` it prints what to put there. Commit both files. The Pi
+has the client after its next switch: see [Updates](#updates).
 
-Each command changes `hosts/rpizh/wireguard.json`, and with `--sops` the
-preshared key in `secrets/rpizh.yaml` (it needs `SOPS_AGE_KEY`, as in step
-3); without, it prints what to put there. Commit both. The Pi has the client
-after its next switch: step 7.
+`add` gives the client the next free address, and prints its configuration and
+the QR code for the phone app.
+
+- Nothing else keeps the client's private key. Scan the code then, or have the
+  configuration written with `-o phone.conf`.
+- The endpoint in the configuration is `wireguard/endpoint` of the sops file,
+  read with `SOPS_AGE_KEY`. `--endpoint <public name>` gives it instead.
+- A client that made its own key pair hands in the public key,
+  `--public-key <key>`, and keeps the other.
 
 | What | Where |
 | --- | --- |
@@ -298,52 +244,92 @@ after its next switch: step 7.
 | The clients: name, public key, address, `"enable": false` to shut one out | `hosts/rpizh/wireguard.json` |
 | The server's private key, the clients' preshared keys | `wireguard/private_key`, `wireguard/psk/<client>` in the sops file |
 
-The server's address is the first of the subnet. Clients reach the home
-network and the internet through it, but not one another
-(`my.wireguard.clientToClient`), and nothing else is forwarded.
+The server's address is the first of the subnet. Clients reach the home network
+and the internet through it. They do not reach one another unless
+`my.wireguard.clientToClient` is set, and the Pi forwards nothing else.
 
-With `my.wireguard.subnet6`, a private `fdxx:…::/64`, the VPN carries IPv6
-too: the server is its `::1`, and a client ends as its IPv4 address does
-(10.6.0.7 is `<subnet6>::7`). They go out behind the Pi's own IPv6 address,
-if its network gives it one. `add` writes both addresses; an older client
-gets IPv6 once its `Address` line has the second one, as in
+With `my.wireguard.subnet6`, a private `fdxx:…::/64`, the VPN carries IPv6 too.
+The server is its `::1`, and a client ends as its IPv4 address does: 10.6.0.7
+is `<subnet6>::7`. Clients go out behind the Pi's own IPv6 address, if its
+network gives it one. `add` writes both addresses. An older client gets IPv6
+once its `Address` line has the second one:
 `Address = 10.6.0.7/24, <subnet6>::7/64`.
 
 ## Another Pi
 
-A directory in `hosts/` is a machine: the flake finds it, and makes its
-system, its check in CI and, for a Pi, its image `<name>-sd-image`, its
-`provision-<name>` and its `wireguard-<name>`. For another VPN server:
+The flake makes a machine of every directory in `hosts/`: its system, its check
+in CI and, for a Pi, `<name>-sd-image`, `provision-<name>` and
+`wireguard-<name>`. For another VPN server:
 
-1. Copy `hosts/rpizh/` to `hosts/<name>/` and change what is its own: the
-   host name, who logs in, the home network fail2ban spares, the VPN's port
-   and subnet. For a Pi 5, import `nixosModules.raspberry-pi-5`. Give it
-   `home/damien/minimal.nix` as home unless you work on it.
+1. Copy `hosts/rpizh/` to `hosts/<name>/` and change what is its own:
 
-   | Option | |
+   | What | Option |
    | --- | --- |
-   | `my.vpnServer.enable` | SSH, the hardening above, WireGuard, DuckDNS, daily upgrades |
-   | `my.hardened.sshUsers`, `neverBan` | Who logs in; the home network, as shell patterns |
-   | `my.wireguard.port`, `subnet` | The VPN |
-   | `my.duckdns.enable`, `my.autoUpgrade.enable` | On with the role; `false` turns one off |
-   | `my.argonOne.enable` | The fan of an Argon One case |
-   | `my.raspberryPi.mdns` | `<name>.local` on its network; on by default |
-   | `my.raspberryPi.wifi` | Wi-Fi with NetworkManager; off by default |
+   | The host name | `networking.hostName` |
+   | Who logs in | `users.users`, `my.hardened.sshUsers` |
+   | The home network, which fail2ban spares | `my.hardened.neverBan` |
+   | The VPN's port and subnet | `my.wireguard.port`, `my.wireguard.subnet` |
+   | The hours it upgrades and reboots in | `my.autoUpgrade.dates`, `rebootWindow` |
+   | The fan, if the Pi is in an Argon One case | `my.argonOne.enable` |
+
+   Keep `home/damien/minimal.nix` as home unless you work on the machine. For a
+   Pi 5, import `nixosModules.raspberry-pi-5`. It evaluates, but no Pi 5 has
+   booted it yet.
 
 2. Make its host key, and keep it in 1Password as an SSH Key item:
-   `ssh-keygen -t ed25519 -N "" -f ssh_host_ed25519_key`. Add its public
-   half to `.sops.yaml` (`ssh-to-age -i ssh_host_ed25519_key.pub`), with a
-   rule for `secrets/<name>.yaml`, anchored like the others.
-3. Write `secrets/<name>.yaml` as in step 2: `password_hash/root`, one
-   `password_hash/<user>` for each user, `duckdns/token` and
-   `duckdns/domains`. The host does not build without the passwords.
-4. Give it a VPN: empty `hosts/<name>/wireguard.json` to `{"peers": {}}`,
-   then
+   `ssh-keygen -t ed25519 -N "" -f ssh_host_ed25519_key`.
+3. Add the key's public half to `.sops.yaml`, with a rule for
+   `secrets/<name>.yaml` anchored like the others:
+   `ssh-to-age -i ssh_host_ed25519_key.pub`.
+4. Write `secrets/<name>.yaml` as in step 2 above. The host does not build
+   without the passwords.
+5. Give it a VPN. Empty `hosts/<name>/wireguard.json` to `{"peers": {}}`, then:
 
    ```sh
    nix run .#wireguard-<name> -- --sops init      # a new server, or
    nix run .#wireguard-<name> -- --sops import wg0.conf
    ```
 
-5. Follow steps 4 to 6 with `<name>` for `rpizh`, forward the VPN's port on
-   its router, and add clients as under "VPN".
+6. Follow steps 4 to 6 above with `<name>` for `rpizh`.
+7. Forward the VPN's port on its router, and add clients as under [VPN](#vpn).
+
+## Security
+
+The Pi is reachable from the internet. So `my.vpnServer` turns on `my.hardened`,
+which holds it tighter than `homelinux`:
+
+- SSH takes keys only, three tries, and only `my.hardened.sshUsers`.
+- fail2ban bans an address for an hour after two failures in 15 minutes, and
+  twice as long each time it comes back, up to a week. It never bans the home
+  network (`my.hardened.neverBan`, 10.x.x.x here). It does ban VPN clients.
+- There is no `sudo`. Root is `su -` from `damien`'s session, with root's own
+  password, so a stolen SSH key is not root. It is not a wall either: whoever
+  has that session can wait for the password to be typed in it.
+- Users, passwords and SSH keys are only what the configuration and the sops
+  file say. `~/.ssh/authorized_keys` is not read.
+- Nobody is a trusted Nix user, since that is root without a password. Only root
+  and `sshUsers` talk to the Nix daemon.
+- Root builds from the repository, never from a checkout in a home. Whoever
+  could write there would decide what root runs next.
+- No client's private key is on the Pi. `wireguard-rpizh add` makes it where you
+  run it, and shows it once.
+- The firewall drops packets from the wrong interface and logs what it refuses.
+  Only root reads the kernel log and kernel addresses. The kernel ignores
+  redirects and source routes.
+- sshd has one host key, the Ed25519 one kept in 1Password, so a new card is the
+  same host to its clients.
+- The board's watchdog resets a Pi that hangs for 30 seconds, or that does not
+  get through a reboot in 10 minutes.
+- Wi-Fi is off and its driver is not loaded. `my.raspberryPi.wifi` turns it on.
+- The Pi announces `rpizh.local` on the home network, not to VPN clients.
+  `my.raspberryPi.mdns = false` turns that off.
+- It upgrades itself every morning: see [Updates](#updates).
+
+A host that would break one of these does not build. `my.hardened` asserts that
+somebody in `sshUsers` has a key, that every user and root has a password in the
+sops file, and that no Nix user is trusted.
+
+The Pi trusts three things in turn: `main` of this repository, which it follows,
+and the caches `dn-personal.cachix.org`, where its kernel comes from, and
+`nix-community.cachix.org`. Whoever can push to one of them is root on the Pi.
+For that reason the CI workflow that fills the cache pins its actions by commit.

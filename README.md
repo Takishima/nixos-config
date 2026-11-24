@@ -66,8 +66,9 @@ A feature with a system part and a home part uses one option name for both
 
 `profiles/raspberry-pi`, exported with nixos-hardware's board module as
 `nixosModules.raspberry-pi-4` and `raspberry-pi-5`, goes on top of the
-modules: hardware, SD image, small-machine settings, and two options of its
-own, `my.argonOne` (the case's fan) and `my.raspberryPi.mdns`.
+modules: hardware, SD image, small-machine settings, and options of its own:
+`my.argonOne` (the case's fan), `my.raspberryPi.mdns` and
+`my.raspberryPi.wifi`.
 
 ## Reuse from another flake
 
@@ -146,6 +147,7 @@ The system builds without the file. Each key turns its feature on:
 | Key | Effect | Without it |
 | --- | --- | --- |
 | `password_hash/<user>` | Login password of the normal user `<user>`, from `mkpasswd -m yescrypt` | The password is `changeme`; a `my.hardened` host does not build |
+| `password_hash/root` | Root's password on a `my.hardened` host, the only way to root there | That host does not build |
 | `wifi/<name>` | Password of the network `my.wifi.networks.<name>` | No profile for that network |
 | `duckdns/token`, `duckdns/domains` | DuckDNS account token; its names, one per line | No DuckDNS updates |
 | `wireguard/private_key` | The VPN server's private key | The VPN is not started |
