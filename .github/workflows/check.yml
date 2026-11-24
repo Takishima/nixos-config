@@ -97,3 +97,20 @@ jobs:
           # A manual run of another branch has no token: it lists what it would push.
           DRY_RUN: ${{ github.ref != 'refs/heads/main' && '1' || '' }}
         run: .github/scripts/push-cache.sh dn-personal ${{ matrix.system }}
+
+  # The servers upgrade from `rpi`, so they only see a commit once the
+  # cache has its builds.
+  promote:
+    name: move rpi to this commit
+    needs: flake-check
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # Holds RPI_DEPLOY_KEY, the only identity the ruleset of `rpi` lets push.
+    environment: main
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ssh-key: ${{ secrets.RPI_DEPLOY_KEY }}
+          fetch-depth: 0
+
+      - run: git push origin "$GITHUB_SHA:refs/heads/rpi"

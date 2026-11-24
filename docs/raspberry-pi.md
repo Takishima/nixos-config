@@ -142,11 +142,12 @@ become root. Write the card again.
 
 ## Updates
 
-The Pi follows `main` of this repository by itself (`my.autoUpgrade`), so a
-change reaches it by being merged. Every morning around 06:00 it switches to
-`github:takishima/nixos-config#rpizh`, and reboots before 08:00 if the kernel
-changed. `my.autoUpgrade.dates` and `rebootWindow` in `hosts/rpizh/default.nix`
-set the hours.
+The Pi follows `rpi` of this repository by itself (`my.autoUpgrade`). CI moves
+`rpi` to a commit of `main` once its checks pass and the cache has its builds,
+so a change reaches the Pi by being merged. Every morning around 06:00 the Pi
+switches to `github:takishima/nixos-config/rpi#rpizh`, and reboots before 08:00
+if the kernel changed. `my.autoUpgrade.dates` and `rebootWindow` in
+`hosts/rpizh/default.nix` set the hours.
 
 The repository has to stay public: the Pi fetches it without credentials.
 
@@ -158,12 +159,11 @@ To see which check failed, on the Pi:
 journalctl -u nixos-upgrade -u nixos-upgrade-confirm
 ```
 
-To switch at once, wait for CI's run on `main`, which puts the kernel in the
-cache. Then, on the Pi:
+To switch at once, wait for CI's run on `main` to move `rpi`. Then, on the Pi:
 
 ```sh
 su -
-nixos-rebuild switch --refresh --flake github:takishima/nixos-config#rpizh
+nixos-rebuild switch --refresh --flake github:takishima/nixos-config/rpi#rpizh
 ```
 
 You cannot push a system built on another machine to the Pi. It only takes
