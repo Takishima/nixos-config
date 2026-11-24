@@ -58,12 +58,12 @@ With `healthchecks/url` in its sops file, a server pings a healthchecks.io check
 | The check gets | When |
 | --- | --- |
 | A ping | An upgrade run ended well, even with nothing to upgrade |
-| A failure, with the failed checks | An upgrade failed or was rolled back |
+| A failure, with the failed checks | An upgrade failed or was rolled back, or a check fails on a morning with nothing to upgrade |
 | Nothing, and raises the alert itself | The server is off, cut off, or does not boot |
 
-The ping says that the upgrade ran, not that the server is well all day: a VPN
-that stops between two upgrades is not reported. The check stays red while
-upgrades keep failing, the week one is left alone included.
+The server runs its checks every morning, upgrade or not. A VPN that stops
+between two mornings is reported at the next one, and not before. The check
+stays red while upgrades keep failing, the week one is left alone included.
 
 Each ping carries the end of the unit's log. Whoever has the ping URL can ping
 the check, and so hide a server that is down, but reads nothing with it.

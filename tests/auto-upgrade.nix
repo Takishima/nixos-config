@@ -70,7 +70,14 @@
     switch_to_next = f"{original}/specialisation/next/bin/switch-to-configuration test"
 
     with subtest("nothing happens when the system did not change"):
+        machine.succeed("touch /run/healthy")
         succeeds("true")
+        same(current(), original)
+
+    with subtest("a system that fails its checks is reported, with nothing to roll back"):
+        machine.succeed("rm /run/healthy")
+        ok, log = upgrade("true")
+        assert not ok and "check failed: healthy" in log, log
         same(current(), original)
 
     with subtest("an upgrade that fails its checks is rolled back"):

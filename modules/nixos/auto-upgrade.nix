@@ -72,9 +72,9 @@ let
       }
 
       healthy() {
-        local deadline=$((SECONDS + ${toString cfg.retrySeconds}))
+        local exemptChecks=$1 deadline=$((SECONDS + ${toString cfg.retrySeconds}))
         sleep ${toString cfg.settleSeconds}
-        until runChecks "$failingBefore"; do
+        until runChecks "$exemptChecks"; do
           if [ "$SECONDS" -ge "$deadline" ]; then
             printf %s "$failures"
             return 1
@@ -125,7 +125,7 @@ let
         if [ "$current" != "$before" ]; then
           # It is already the boot default: a reset now leaves it to confirm.
           echo "$current" > "$awaitingReboot"
-          if healthy; then
+          if healthy "$failingBefore"; then
             ln -sfn "$current" "$goodLink"
             rm -f "$awaitingReboot" "$bootsWithoutPassing"
             exit 0
@@ -148,6 +148,11 @@ let
         if [ "$new" = "$current" ] || [ ! -x "$new/bin/switch-to-configuration" ]; then
           if is "$current" "$failedAfterReboot"; then
             echo "still running $current, which failed its checks"
+            exit 1
+          fi
+          if ! healthy /dev/null; then
+            echo "$current fails its checks, and there is no upgrade to roll back:"
+            printf %s "$failures"
             exit 1
           fi
           exit 0
@@ -182,7 +187,7 @@ let
 
           if [ "$boots" -gt ${toString bootAttempts} ]; then
             reason="booted ${toString bootAttempts} times without passing its checks"
-          elif healthy; then
+          elif healthy "$failingBefore"; then
             ln -sfn "$current" "$goodLink"
             rm -f "$awaitingReboot" "$bootsWithoutPassing" "$failedAfterReboot" "$failuresInARow"
             exit 0
@@ -291,6 +296,9 @@ in
 
         A check that already failed before the upgrade does not count: the
         upgrade may be what fixes it.
+
+        A run that finds nothing to upgrade runs the checks as well. If one
+        fails, the run fails, and nothing is rolled back.
 
         A rolled-back live upgrade is retried at the next run. So is one that
         failed after rebooting, or that booted ${toString bootAttempts} times without passing. A
