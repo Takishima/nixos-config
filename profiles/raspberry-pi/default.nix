@@ -42,6 +42,8 @@ in
         "panic=10"
       ];
       blacklistedKernelModules = lib.optional (!cfg.wifi) "brcmfmac";
+      # Nobody is at the console to pick a generation from the menu.
+      loader.timeout = 1;
     };
 
     sdImage = {
