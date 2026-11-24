@@ -3,30 +3,14 @@
   config,
   lib,
   modulesPath,
-  pkgs,
   ...
 }:
-let
-  cfg = config.my.raspberryPi;
-in
 {
   imports = [
     # The FIRMWARE and NIXOS_SD partitions, and the image as system.build.sdImage.
     (modulesPath + "/installer/sd-card/sd-image.nix")
     ./argon-one.nix
   ];
-
-  options.my.raspberryPi = {
-    mdns = lib.mkOption {
-      type = lib.types.bool;
-      default = true;
-      description = "Whether the Pi answers to `<hostname>.local` on its network.";
-    };
-
-    wifi = lib.mkEnableOption ''
-      Wi-Fi, with NetworkManager and the networks of `my.wifi`. Off, the
-      radio's driver is not loaded and the Pi takes its address on Ethernet'';
-  };
 
   config = {
     nixpkgs.hostPlatform = "aarch64-linux";
@@ -38,7 +22,8 @@ in
         # Covers early boot, before the watchdog below is running.
         "panic=10"
       ];
-      blacklistedKernelModules = lib.optional (!cfg.wifi) "brcmfmac";
+      # The Pi takes its address on Ethernet: the radio's driver stays out.
+      blacklistedKernelModules = [ "brcmfmac" ];
       loader.timeout = 1;
     };
 
@@ -77,8 +62,6 @@ in
       ];
     };
 
-    networking.networkmanager.enable = cfg.wifi;
-
     zramSwap.enable = true;
 
     # The board's watchdog resets a Pi that hangs, also during a reboot.
@@ -93,7 +76,7 @@ in
       journald.settings.Journal.SystemMaxUse = "100M";
       fstrim.enable = true;
       # <hostname>.local on the home network, not for a VPN's clients.
-      avahi = lib.mkIf cfg.mdns {
+      avahi = {
         enable = true;
         nssmdns4 = true;
         settings = {

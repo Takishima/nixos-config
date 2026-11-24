@@ -53,7 +53,6 @@ sudo cat /etc/duckdns/duck.sh                   # the DuckDNS names and token, f
    | `wireguard/endpoint` | For `wireguard-rpizh add` |
    | `healthchecks/url` | To be [told of a failed upgrade](#get-told-when-an-upgrade-fails) |
    | `wireguard/private_key`, `wireguard/psk/<client>` | Step 3 writes them |
-   | `wifi/<name>` | Only with `my.raspberryPi.wifi` |
 
 Every value must be a string. One that is not makes the Pi reject the whole
 file.

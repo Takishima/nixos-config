@@ -7,24 +7,26 @@
   ...
 }:
 let
-  cfg = config.my.argonOne;
+  # Argon's own curve: from each temperature in °C, a fan speed in percent.
+  curve = [
+    {
+      at = 55;
+      percent = 30;
+    }
+    {
+      at = 60;
+      percent = 55;
+    }
+    {
+      at = 65;
+      percent = 100;
+    }
+  ];
 in
 {
-  options.my.argonOne = {
-    enable = lib.mkEnableOption "the fan of an Argon One case";
+  options.my.argonOne.enable = lib.mkEnableOption "the fan of an Argon One case, at the speeds of Argon's own daemon";
 
-    curve = lib.mkOption {
-      type = lib.types.attrsOf (lib.types.ints.between 0 100);
-      default = {
-        "55" = 30;
-        "60" = 55;
-        "65" = 100;
-      };
-      description = "Fan speed in percent from each temperature in °C. The default is Argon's.";
-    };
-  };
-
-  config = lib.mkIf cfg.enable {
+  config = lib.mkIf config.my.argonOne.enable {
     hardware.i2c.enable = true;
     hardware.raspberry-pi.configtxt.settings.all.dtparam = [ "i2c_arm=on" ];
 
@@ -40,19 +42,9 @@ in
         while true; do
           temp=$(( $(cat /sys/class/thermal/thermal_zone0/temp) / 1000 ))
           want=0
-          ${lib.concatMapStrings
-            (step: ''
-              if [ "$temp" -ge ${toString step.at} ]; then want=${toString step.percent}; fi
-            '')
-            (
-              lib.sort (a: b: a.at < b.at) (
-                lib.mapAttrsToList (at: percent: {
-                  at = lib.toInt at;
-                  inherit percent;
-                }) cfg.curve
-              )
-            )
-          }
+          ${lib.concatMapStrings (step: ''
+            if [ "$temp" -ge ${toString step.at} ]; then want=${toString step.percent}; fi
+          '') curve}
           # Speed up at once, slow down only after 30 seconds below the step.
           if [ "$want" -lt "$speed" ]; then
             cool=$((cool + 1))
