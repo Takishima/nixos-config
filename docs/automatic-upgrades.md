@@ -18,6 +18,7 @@ the checks of a VPN server (`my.autoUpgrade.checks`) are these:
 | `upgrade-timer` | The next upgrade is scheduled |
 | `route`, `repository` | There is a route out, and GitHub serves this repository |
 | `wireguard` | The VPN runs |
+| `duckdns` | The last DuckDNS update worked |
 
 A check that already failed before the upgrade does not count against it: the
 upgrade may be what repairs it.
