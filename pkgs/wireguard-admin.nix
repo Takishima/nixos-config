@@ -78,12 +78,13 @@ writeShellApplication {
     fi
     command=''${1:-}
     [ $# -gt 0 ] && shift
+    [ -z "$command" ] || [ -d "$(dirname "$file")" ] ||
+      die "no $(dirname "$file") here: run it at the root of the repository"
 
     state() {
       if [ -f "$file" ]; then cat "$file"; else echo '{"publicKey": null, "peers": {}}'; fi
     }
     save() {
-      [ -d "$(dirname "$file")" ] || die "no $(dirname "$file") here: run it at the root of the repository"
       jq -S . >"$file.new"
       mv "$file.new" "$file"
     }
