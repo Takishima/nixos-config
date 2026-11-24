@@ -123,6 +123,8 @@ let
         new=$(readlink -f "$profile")
 
         if [ "$current" != "$before" ]; then
+          # It is already the boot default: a reset now leaves it to confirm.
+          echo "$current" > "$awaitingReboot"
           if healthy; then
             ln -sfn "$current" "$goodLink"
             rm -f "$awaitingReboot" "$bootsWithoutPassing"
@@ -133,7 +135,11 @@ let
             echo "could not reset the system profile"
           fi
           # The running system matters more than the boot loader.
-          "$good/bin/switch-to-configuration" switch || "$good/bin/switch-to-configuration" test
+          if "$good/bin/switch-to-configuration" switch; then
+            rm -f "$awaitingReboot"
+          else
+            "$good/bin/switch-to-configuration" test
+          fi
           echo "rolled back to $good:"
           printf %s "$failures"
           exit 1

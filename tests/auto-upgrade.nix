@@ -14,6 +14,7 @@
       checks = {
         healthy = "test -e /run/healthy";
         other = "test ! -e /run/other-broken";
+        recorded = "test ! -e /run/watch || cat /var/lib/nixos-upgrade/pending > /run/seen";
       };
       settleSeconds = 1;
       retrySeconds = 0;
@@ -78,6 +79,13 @@
         same(current(), original)
         same(link(profile), original)
         machine.fail("test -e /etc/next")
+
+    with subtest("a system switched to is recorded for the next boot while it is checked"):
+        machine.succeed("touch /run/healthy")
+        succeeds(f"touch /run/watch; {switch_to_next}")
+        same(machine.succeed("cat /run/seen").strip(), current())
+        machine.fail(f"test -e {state}/pending")
+        machine.succeed("rm /run/watch", f"{original}/bin/switch-to-configuration test")
 
     with subtest("a check that already failed before is not held against it"):
         machine.succeed("touch /run/healthy /run/other-broken")
