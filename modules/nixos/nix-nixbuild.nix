@@ -46,6 +46,10 @@ in
       extraConfig = ''
         Host ${cfg.host}
           ServerAliveInterval 60
+      ''
+      + lib.optionalString hasKey ''
+        Match host ${cfg.host} localuser root
+          IdentityFile ${keyPath}
       '';
     };
 
