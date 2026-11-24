@@ -4,20 +4,10 @@
   imports = [
     inputs.self.nixosModules.default
     inputs.self.nixosModules.raspberry-pi-4
+    ../../home/damien/server-account.nix
   ];
 
   networking.hostName = "rpizh";
-
-  users.users.damien = {
-    isNormalUser = true;
-    uid = 1000;
-    description = "Damien Nguyen";
-    openssh.authorizedKeys.keys = lib.attrValues (import ../../home/damien/ssh-keys.nix) ++ [
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFEFQdTTDWuE3Kdvky3k2jtl9pa5a5+yV4keJNpT2Fyy"
-      "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBA+nIIpFTOVL+ew5gHRNZe5YJzapuKgQUfGqMnHE00n23FEqduqNi5DDhkOmzbYmijtOQF8wJiWPv8HPsKvALG8= termius"
-    ];
-  };
-  home-manager.users.damien = ../../home/damien/minimal.nix;
 
   my = {
     locale = {
@@ -29,19 +19,7 @@
 
     vpnServer.enable = true;
 
-    nix.nixbuild = {
-      enable = true;
-      systems = [ "aarch64-linux" ];
-      extraFeatures = [
-        "kvm"
-        "nixos-test"
-      ];
-    };
-
-    hardened = {
-      sshUsers = [ "damien" ];
-      neverBan = [ "10.*" ];
-    };
+    hardened.neverBan = [ "10.*" ];
 
     argonOne.enable = true;
 
@@ -54,7 +32,7 @@
       };
     };
 
-    # Clients are managed with `nix run .#wireguard-rpizh`.
+    # PiVPN's port and network, which the clients it set up still use.
     wireguard = {
       port = 1194;
       subnet = "10.117.17.0/24";

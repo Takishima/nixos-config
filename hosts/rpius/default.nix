@@ -4,20 +4,10 @@
   imports = [
     inputs.self.nixosModules.default
     inputs.self.nixosModules.raspberry-pi-4
+    ../../home/damien/server-account.nix
   ];
 
   networking.hostName = "rpius";
-
-  users.users.damien = {
-    isNormalUser = true;
-    uid = 1000;
-    description = "Damien Nguyen";
-    openssh.authorizedKeys.keys = lib.attrValues (import ../../home/damien/ssh-keys.nix) ++ [
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFEFQdTTDWuE3Kdvky3k2jtl9pa5a5+yV4keJNpT2Fyy"
-      "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBA+nIIpFTOVL+ew5gHRNZe5YJzapuKgQUfGqMnHE00n23FEqduqNi5DDhkOmzbYmijtOQF8wJiWPv8HPsKvALG8= termius"
-    ];
-  };
-  home-manager.users.damien = ../../home/damien/minimal.nix;
 
   my = {
     locale = {
@@ -27,21 +17,9 @@
 
     vpnServer.enable = true;
 
-    nix.nixbuild = {
-      enable = true;
-      systems = [ "aarch64-linux" ];
-      extraFeatures = [
-        "kvm"
-        "nixos-test"
-      ];
-    };
+    hardened.neverBan = [ "192.168.1.*" ];
 
-    hardened = {
-      sshUsers = [ "damien" ];
-      neverBan = [ "192.168.1.*" ];
-    };
-
-    # Early morning there, noon in Zurich.
+    # 06:00 here is noon in Zurich.
     autoUpgrade = {
       dates = "06:00";
       rebootWindow = {
@@ -50,7 +28,7 @@
       };
     };
 
-    # As PiVPN had it. Clients are managed with `nix run .#wireguard-rpius`.
+    # PiVPN's port and network, which the clients it set up still use.
     wireguard = {
       port = 1194;
       subnet = "10.56.236.0/24";
