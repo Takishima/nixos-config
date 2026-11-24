@@ -91,6 +91,9 @@ writeShellApplication {
     check_name() {
       [[ $1 =~ ^[A-Za-z0-9_.-]+$ ]] || die "a name takes letters, digits, _ . and - only: $1"
     }
+    sops_index() {
+      jq -rn --arg path "wireguard/$1" '$path | split("/") | map("[" + tojson + "]") | join("")'
+    }
 
     # secret <key under wireguard> <value>: kept until write_secrets, which
     # runs before anything else is written.
@@ -100,7 +103,7 @@ writeShellApplication {
     }
     drop_secret() {
       if [ -n "$sops" ]; then
-        index=$(jq -rn --arg path "wireguard/$1" '$path | split("/") | map("[" + tojson + "]") | join("")')
+        index=$(sops_index "$1")
         sops unset "$secrets" "$index" || true
       else
         echo "Remove wireguard/$1 from $secrets." >&2
@@ -111,8 +114,9 @@ writeShellApplication {
       local entry psk=""
       if [ -n "$sops" ]; then
         for entry in "''${pending[@]}"; do
-          index=$(jq -rn --arg path "wireguard/''${entry%%=*}" '$path | split("/") | map("[" + tojson + "]") | join("")')
-          jq -n --arg value "''${entry#*=}" '$value' | sops set --value-stdin "$secrets" "$index"
+          # printf is a shell builtin: the secret appears on no command line.
+          printf %s "''${entry#*=}" | jq -Rs . |
+            sops set --value-stdin "$secrets" "$(sops_index "''${entry%%=*}")"
         done
         return 0
       fi
