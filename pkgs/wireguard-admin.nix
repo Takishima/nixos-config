@@ -285,7 +285,8 @@ writeShellApplication {
         save <<<"$new"
 
         if [ -n "$out" ]; then
-          (umask 077 && echo "$conf" >"$out")
+          install -m 600 /dev/null "$out"
+          echo "$conf" >"$out"
           echo "The client's configuration is in $out: delete it once the client has it." >&2
         else
           echo "$conf" >&2
