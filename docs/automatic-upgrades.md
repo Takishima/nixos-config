@@ -40,8 +40,8 @@ bad kernel would reboot the server twice every morning.
 ## What the checks do not catch
 
 - A kernel that fails before any service starts. The watchdog resets the Pi,
-  which boots the same kernel again. Take the card out, or connect a screen and
-  choose an older generation in U-Boot's menu.
+  which boots the same kernel again: see
+  [If the Pi does not boot](raspberry-pi.md#if-the-pi-does-not-boot).
 - The firmware partition, with U-Boot and `config.txt`. Every switch rewrites
   it, and it is not kept per generation: a rollback does not bring the old one
   back.

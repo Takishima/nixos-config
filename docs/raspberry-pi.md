@@ -52,6 +52,7 @@ sudo cat /etc/duckdns/duck.sh                   # the DuckDNS names and token, f
    | `duckdns/token`, `duckdns/domains` | For DuckDNS |
    | `wireguard/endpoint` | For `wireguard-rpizh add` |
    | `healthchecks/url` | To be [told of a failed upgrade](#get-told-when-an-upgrade-fails) |
+   | `nixbuild_ssh_key` | To build on nixbuild.net |
    | `wireguard/private_key`, `wireguard/psk/<client>` | Step 3 writes them |
 
 Every value must be a string. One that is not makes the Pi reject the whole
@@ -126,8 +127,8 @@ land in the Nix store, readable by every user and pushed to the cache.
 ## 6. First boot
 
 1. On the router, reserve the address DHCP gives the Pi.
-2. Log in over SSH, with a key from `users.users` in `hosts/rpizh/default.nix`.
-   SSH does not accept passwords.
+2. Log in with `ssh damien@rpizh.local`, using one of Damien's keys. SSH does
+   not accept passwords.
 3. Check the VPN:
 
    ```sh
@@ -169,8 +170,9 @@ You cannot push a system built on another machine to the Pi. It only takes
 paths signed by a cache it knows: see
 [About the hardening of a VPN server](server-hardening.md).
 
-None of this updates the boot loader in the Pi's EEPROM. To do that, as root:
-`nix shell nixpkgs#raspberrypi-eeprom -c rpi-eeprom-update`.
+To update the boot loader in the Pi's EEPROM, which an upgrade does not touch,
+run as root `nix shell nixpkgs#raspberrypi-eeprom -c rpi-eeprom-update -a`, then
+reboot.
 
 ### Get told when an upgrade fails
 
@@ -187,7 +189,7 @@ fails, or when the Pi goes silent.
        url: https://hc-ping.com/<uuid>
    ```
 
-3. Commit the file. The Pi reports from its next upgrade on.
+3. Commit the file to `main`. The Pi reports from its next upgrade on.
 4. Try it, on the Pi as root. The first command turns the check red and sends
    you the alert, the second turns it green again:
 
@@ -196,11 +198,28 @@ fails, or when the Pi goes silent.
    systemctl start healthchecks-success@nixos-upgrade.service
    ```
 
+## If the Pi does not boot
+
+The watchdog resets a Pi that hangs, which then boots the same system again.
+First get the Pi up in one of two ways:
+
+- Connect a screen and a keyboard. U-Boot shows its menu for one second: choose
+  an older generation there.
+- Write the card again from a commit that booted: check it out and follow
+  [step 5](#5-write-the-card). The Pi comes back as the same machine.
+
+Then repair `main` before the next morning. Until you do, the Pi upgrades to
+the same system again, and the first way boots it again at any reboot.
+
+The kernel logs to the serial console too, `ttyS0` at 115200 baud.
+
+A card that died is replaced the same way, from `main`.
+
 ## Another Pi
 
-The flake makes a machine of every directory in `hosts/`: its system, its check
-in CI and, for a Pi, `<name>-sd-image`, `provision-<name>` and
-`wireguard-<name>`. For another VPN server:
+The flake makes a machine of every directory in `hosts/`, with its system and
+its check in CI. A Pi also gets `<name>-sd-image` and `provision-<name>`, and a
+VPN server `wireguard-<name>`. For another VPN server:
 
 1. Copy `hosts/rpizh/` to `hosts/<name>/` and change what is its own:
 
@@ -210,7 +229,9 @@ in CI and, for a Pi, `<name>-sd-image`, `provision-<name>` and
    | Who logs in | The import of `home/damien/server-account.nix`: Damien, with every key of `home/damien/ssh-keys.nix` |
    | The home network, which fail2ban spares | `my.hardened.neverBan` |
    | The VPN's port and subnet | `my.wireguard.port`, `my.wireguard.subnet` |
-   | The hours it upgrades and reboots in | `my.autoUpgrade.dates`, `rebootWindow` |
+   | IPv6 and DNS for the VPN's clients | `my.wireguard.subnet6`, `my.wireguard.dns` |
+   | The time zone and the locales | `my.locale` |
+   | The hours it upgrades and reboots in, in that time zone | `my.autoUpgrade.dates`, `rebootWindow` |
    | The fan, if the Pi is in an Argon One case | `my.argonOne.enable` |
 
    Keep the import of `home/damien/server-account.nix` unless you work on the
@@ -231,7 +252,8 @@ in CI and, for a Pi, `<name>-sd-image`, `provision-<name>` and
 4. Write `secrets/<name>.yaml` as in step 2 above, then
    `git add .sops.yaml secrets/<name>.yaml`. The host does not build without
    the passwords.
-5. Give it a VPN. Empty `hosts/<name>/wireguard.json` to `{"peers": {}}`, then:
+5. Give it a VPN. The copied `hosts/<name>/wireguard.json` holds `rpizh`'s
+   server and clients: replace its content with `{"peers": {}}`, then:
 
    ```sh
    nix run .#wireguard-<name> -- --sops init      # a new server, or
