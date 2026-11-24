@@ -74,11 +74,7 @@ in
 
     sops = {
       defaultSopsFile = lib.mkIf exists cfg.file;
-      age = {
-        sshKeyPaths = [ cfg.sshKeyPath ];
-        keyFile = null;
-        generateKey = false;
-      };
+      age.sshKeyPaths = [ cfg.sshKeyPath ];
       gnupg.sshKeyPaths = [ ];
     };
 
