@@ -3,17 +3,14 @@ let
   cfg = config.my.nix.nixbuild;
   hasKey = config.my.secrets.has "nixbuild_ssh_key";
   keyPath = config.sops.secrets.nixbuild_ssh_key.path;
-  url = "ssh://${cfg.host}";
+  host = "eu.nixbuild.net";
+  url = "ssh://${host}";
 in
 {
   imports = [ ./secrets.nix ];
 
   options.my.nix.nixbuild = {
     enable = lib.mkEnableOption "nixbuild.net remote builds";
-    host = lib.mkOption {
-      type = lib.types.str;
-      default = "eu.nixbuild.net";
-    };
     systems = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [
@@ -41,14 +38,14 @@ in
     ) "my.nix.nixbuild is on, but the sops file has no nixbuild_ssh_key: nothing builds remotely.";
 
     programs.ssh = {
-      knownHosts.${cfg.host}.publicKey =
+      knownHosts.${host}.publicKey =
         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPIQCZc54poJ8vqawd8TraNryQeJnvH1eLpIDgbiqymM";
       extraConfig = ''
-        Host ${cfg.host}
+        Host ${host}
           ServerAliveInterval 60
       ''
       + lib.optionalString hasKey ''
-        Match host ${cfg.host} localuser root
+        Match host ${host} localuser root
           IdentityFile ${keyPath}
       '';
     };
@@ -59,7 +56,7 @@ in
       distributedBuilds = true;
       buildMachines = [
         {
-          hostName = cfg.host;
+          hostName = host;
           inherit (cfg) systems;
           sshUser = "root";
           sshKey = keyPath;
