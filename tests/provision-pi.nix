@@ -42,14 +42,17 @@ let
   # The test key's age recipient: fixtures/secrets.yaml is encrypted for it.
   recipient = "age1rqz9lhprtuea2rglxfuuvgkccyzar25ta66gsea2mg86kuspcqdshcehps";
 
-  provision =
+  provisionFor =
     recipients:
-    pkgs.callPackage ../pkgs/provision-pi.nix {
-      host = "testpi";
-      inherit image recipients;
-    };
+    lib.getExe (
+      pkgs.callPackage ../pkgs/provision-pi.nix {
+        host = "testpi";
+        inherit image recipients;
+      }
+    )
+    + " --yes";
+  provision = provisionFor [ recipient ];
 
-  # op read "op://vault/host/private_key?ssh-format=openssh"
   op = pkgs.writeShellScriptBin "op" ''
     case $2 in
       "op://vault/host/private_key?ssh-format=openssh") cat ${sshKeys.snakeOilEd25519PrivateKey} ;;
@@ -69,25 +72,19 @@ in
     machine.wait_for_unit("multi-user.target")
 
     with subtest("a key the secrets are not for is refused, the card untouched"):
-        machine.fail("${
-          lib.getExe (provision [ "age1someoneelse" ])
-        } --yes --fixed-disk /dev/vdb op://vault/host")
+        machine.fail("${provisionFor [ "age1someoneelse" ]} --fixed-disk /dev/vdb op://vault/host")
         machine.fail("blkid /dev/vdb")
 
     with subtest("a disk that is not removable is refused"):
-        machine.fail("${lib.getExe (provision [ recipient ])} --yes /dev/vdb op://vault/host")
+        machine.fail("${provision} /dev/vdb op://vault/host")
         machine.fail("blkid /dev/vdb")
 
     with subtest("an item without a key is refused"):
-        machine.fail("${
-          lib.getExe (provision [ recipient ])
-        } --yes --fixed-disk /dev/vdb op://vault/nope")
+        machine.fail("${provision} --fixed-disk /dev/vdb op://vault/nope")
         machine.fail("blkid /dev/vdb")
 
     with subtest("the card gets the image and the key"):
-        machine.succeed("${
-          lib.getExe (provision [ recipient ])
-        } --yes --fixed-disk /dev/vdb op://vault/host")
+        machine.succeed("${provision} --fixed-disk /dev/vdb op://vault/host")
         machine.succeed("mkdir /mnt && mount /dev/vdb2 /mnt")
         machine.succeed(
             "test -f /mnt/from-the-image",
@@ -97,13 +94,9 @@ in
         )
 
     with subtest("a partition and a mounted card are refused"):
-        machine.fail("${
-          lib.getExe (provision [ recipient ])
-        } --yes --fixed-disk /dev/vdb op://vault/host")
+        machine.fail("${provision} --fixed-disk /dev/vdb op://vault/host")
         machine.succeed("umount /mnt && mount /dev/vdb2 /mnt")
-        machine.fail("${
-          lib.getExe (provision [ recipient ])
-        } --yes --fixed-disk /dev/vdb2 op://vault/host")
+        machine.fail("${provision} --fixed-disk /dev/vdb2 op://vault/host")
         machine.succeed("test -f /mnt/from-the-image")
 
     with subtest("the root fills the card"):
