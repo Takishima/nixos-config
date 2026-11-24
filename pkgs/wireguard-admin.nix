@@ -208,8 +208,11 @@ writeShellApplication {
           *",$prefix.1/24,"*) ;;
           *) die "the server's address is $address, not $prefix.1/24: set my.wireguard.subnet to its network first" ;;
         esac
-        [ "$listen" = ${port} ] ||
-          echo "Note: the old server listens on ''${listen:-no fixed port}, my.wireguard.port is ${port}. Clients connect to the old one." >&2
+        if [ -z "$listen" ]; then
+          echo "The old server's wg0.conf sets no ListenPort: check that its clients connect to ${port}, which is my.wireguard.port." >&2
+        elif [ "$listen" != ${port} ]; then
+          echo "The old server listens on $listen, where its clients connect: set my.wireguard.port, now ${port}, to $listen." >&2
+        fi
 
         new=$(state | jq --arg key "$(wg pubkey <<<"$private")" '.publicKey = $key')
         secret private_key "$private"
@@ -221,7 +224,7 @@ writeShellApplication {
           for ip in ''${ips//,/ }; do
             case $ip in
               "$prefix".*/32) address=''${ip%/32} ;;
-              *) echo "Note: $name: $ip is not carried over, only its address in ${subnet}." >&2 ;;
+              *) echo "$name: $ip is not carried over, only its address in ${subnet}." >&2 ;;
             esac
           done
           [ -n "$address" ] || die "client $name has no address in ${subnet}: $ips"
