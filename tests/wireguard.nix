@@ -103,6 +103,18 @@ in
     tablet.environment.systemPackages = [ pkgs.wireguard-tools ];
 
     home.virtualisation.vlans = [ 2 ];
+
+    # As a freshly installed host: no sops file yet. Never started.
+    fresh = {
+      imports = [ self.nixosModules.wireguard ];
+      my = {
+        secrets.file = null;
+        wireguard = {
+          enable = true;
+          subnet = "10.6.0.0/24";
+        };
+      };
+    };
   };
 
   testScript =
@@ -111,8 +123,19 @@ in
       homeAddress = nodes.home.networking.primaryIPAddress;
       serverAtHome = (lib.head nodes.server.networking.interfaces.eth2.ipv4.addresses).address;
     in
+    assert lib.assertMsg (
+      nodes.fresh.networking.firewall.allowedUDPPorts == [ ]
+      && !nodes.fresh.networking.firewall.filterForward
+      && !nodes.fresh.networking.nat.enable
+      && nodes.fresh.networking.wireguard.interfaces == { }
+      && !(nodes.fresh.my.autoUpgrade.checks ? wireguard)
+      && lib.any (lib.hasInfix "my.wireguard") nodes.fresh.warnings
+    ) "without its sops key, my.wireguard must open nothing and say so";
     ''
-      start_all()
+      server.start()
+      client.start()
+      tablet.start()
+      home.start()
       server.wait_for_unit("wireguard-wg0.target")
 
       with subtest("the server has the declared clients, but not the disabled one"):

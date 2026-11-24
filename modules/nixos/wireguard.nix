@@ -56,8 +56,9 @@ in
     enable = lib.mkEnableOption ''
       a WireGuard server that routes its clients to the local network and
       the internet. Its private key is `wireguard/private_key` in the sops
-      file. Manage clients with `nix run .#wireguard-<host>`. On the server,
-      `wg-peers` is `wg show wg0` with each client's name, for root'';
+      file: without it nothing is started and no port is opened. Manage
+      clients with `nix run .#wireguard-<host>`. On the server, `wg-peers` is
+      `wg show wg0` with each client's name, for root'';
 
     port = lib.mkOption {
       type = lib.types.port;
@@ -135,82 +136,84 @@ in
     };
   };
 
-  config = lib.mkIf cfg.enable {
-    assertions = [
+  config = lib.mkIf cfg.enable (
+    lib.mkMerge [
       {
-        assertion = badNames == [ ];
-        message = "my.wireguard.peers: names take letters, digits, `_`, `.` and `-` only: ${toString badNames}";
+        assertions = [
+          {
+            assertion = badNames == [ ];
+            message = "my.wireguard.peers: names take letters, digits, `_`, `.` and `-` only: ${toString badNames}";
+          }
+          {
+            assertion = outside == { };
+            message = "my.wireguard.peers: not a client address of ${cfg.subnet}: ${toString (lib.attrNames outside)}";
+          }
+          {
+            assertion = duplicateAddresses == [ ] && duplicateKeys == [ ];
+            message = "my.wireguard.peers: used by more than one client: ${
+              toString (duplicateAddresses ++ duplicateKeys)
+            }";
+          }
+        ];
       }
-      {
-        assertion = outside == { };
-        message = "my.wireguard.peers: not a client address of ${cfg.subnet}: ${toString (lib.attrNames outside)}";
-      }
-      {
-        assertion = duplicateAddresses == [ ] && duplicateKeys == [ ];
-        message = "my.wireguard.peers: used by more than one client: ${
-          toString (duplicateAddresses ++ duplicateKeys)
-        }";
-      }
-    ];
 
-    warnings = lib.optional (
-      !has privateKey
-    ) "my.wireguard: the sops file has no ${privateKey}, so the VPN is not started.";
+      (lib.mkIf (!has privateKey) {
+        warnings = [ "my.wireguard: the sops file has no ${privateKey}, so the VPN is not started." ];
+      })
 
-    environment.systemPackages = [ wgPeers ];
+      (lib.mkIf (has privateKey) {
+        environment.systemPackages = [ wgPeers ];
 
-    my.autoUpgrade.checks = lib.mkIf (has privateKey) {
-      wireguard = "systemctl is-active --quiet wireguard-wg0.service";
-    };
+        my.autoUpgrade.checks.wireguard = "systemctl is-active --quiet wireguard-wg0.service";
 
-    sops.secrets = lib.mkIf (has privateKey) (
-      {
-        ${privateKey}.restartUnits = [ "wireguard-wg0.service" ];
-      }
-      // lib.genAttrs' withPsk (
-        name:
-        lib.nameValuePair (psk name) {
-          restartUnits = [ "wireguard-wg0-peer-${name}.service" ];
+        sops.secrets = {
+          ${privateKey}.restartUnits = [ "wireguard-wg0.service" ];
         }
-      )
-    );
+        // lib.genAttrs' withPsk (
+          name:
+          lib.nameValuePair (psk name) {
+            restartUnits = [ "wireguard-wg0-peer-${name}.service" ];
+          }
+        );
 
-    networking = {
-      wireguard.interfaces.wg0 = lib.mkIf (has privateKey) {
-        ips = [ "${prefix}.1/24" ] ++ lib.optional hasIPv6 "${prefix6}1/64";
-        listenPort = cfg.port;
-        privateKeyFile = secretFile privateKey;
-        peers = lib.mapAttrsToList (name: peer: {
-          inherit name;
-          inherit (peer) publicKey;
-          allowedIPs = [ "${peer.address}/32" ] ++ lib.optional hasIPv6 "${address6 peer.address}/128";
-          presharedKeyFile = if lib.elem name withPsk then secretFile (psk name) else null;
-        }) peers;
-      };
+        networking = {
+          wireguard.interfaces.wg0 = {
+            ips = [ "${prefix}.1/24" ] ++ lib.optional hasIPv6 "${prefix6}1/64";
+            listenPort = cfg.port;
+            privateKeyFile = secretFile privateKey;
+            peers = lib.mapAttrsToList (name: peer: {
+              inherit name;
+              inherit (peer) publicKey;
+              allowedIPs = [ "${peer.address}/32" ] ++ lib.optional hasIPv6 "${address6 peer.address}/128";
+              presharedKeyFile = if lib.elem name withPsk then secretFile (psk name) else null;
+            }) peers;
+          };
 
-      # filterForward takes nftables, and forwards only what comes from the VPN.
-      nftables = {
-        enable = true;
-        # Ahead of the firewall's forward chain, which lets all from wg0 through.
-        tables.wireguard-clients = lib.mkIf (!cfg.clientToClient) {
-          family = "inet";
-          content = ''
-            chain forward {
-              type filter hook forward priority filter - 10; policy accept;
-              iifname "wg0" oifname "wg0" drop comment "VPN clients do not reach one another"
-            }
-          '';
+          # filterForward takes nftables, and forwards only what comes from the VPN.
+          nftables = {
+            enable = true;
+            # Ahead of the firewall's forward chain, which lets all from wg0 through.
+            tables.wireguard-clients = lib.mkIf (!cfg.clientToClient) {
+              family = "inet";
+              content = ''
+                chain forward {
+                  type filter hook forward priority filter - 10; policy accept;
+                  iifname "wg0" oifname "wg0" drop comment "VPN clients do not reach one another"
+                }
+              '';
+            };
+          };
+          firewall = {
+            allowedUDPPorts = [ cfg.port ];
+            filterForward = true;
+          };
+          nat = {
+            enable = true;
+            enableIPv6 = hasIPv6;
+            internalInterfaces = [ "wg0" ];
+          };
         };
-      };
-      firewall = {
-        allowedUDPPorts = [ cfg.port ];
-        filterForward = true;
-      };
-      nat = {
-        enable = true;
-        enableIPv6 = hasIPv6;
-        internalInterfaces = [ "wg0" ];
-      };
-    };
-  };
+      })
+    ]
+  );
 }
