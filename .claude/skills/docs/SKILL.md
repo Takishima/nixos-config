@@ -11,3 +11,6 @@ in the same directory, is the paragraph-by-paragraph check of its last step.
 
 Read in it `@{ask_user}` as "ask the user", and `@{file_list_tools}` as the
 tools that list files.
+
+The Documentation section of the root `AGENTS.md` says which document here
+holds what. Where it and the skill disagree, `AGENTS.md` wins.

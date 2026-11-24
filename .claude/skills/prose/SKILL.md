@@ -14,3 +14,6 @@ deploys to other machines. Read that file and follow these parts of it:
 - Steps 3a and 3c, for any text, documentation included.
 
 The files it links to are in `skills/writing/prose/references/`.
+
+The Commits section of the root `AGENTS.md` gives the form of a subject line
+here. Where it and the skill disagree, `AGENTS.md` wins.
