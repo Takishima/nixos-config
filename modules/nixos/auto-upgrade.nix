@@ -145,12 +145,11 @@ let
           exit 1
         fi
 
-        if is "$current" "$failedAfterReboot"; then
-          echo "still running $current, which failed its checks"
-          exit 1
-        fi
-
         if [ "$new" = "$current" ] || [ ! -x "$new/bin/switch-to-configuration" ]; then
+          if is "$current" "$failedAfterReboot"; then
+            echo "still running $current, which failed its checks"
+            exit 1
+          fi
           exit 0
         fi
 
