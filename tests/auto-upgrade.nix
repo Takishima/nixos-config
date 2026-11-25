@@ -15,6 +15,8 @@
         healthy = "test -e /run/healthy";
         other = "test ! -e /run/other-broken";
         recorded = "test ! -e /run/watch || cat /var/lib/nixos-upgrade/pending > /run/seen";
+        failsOnce = "if [ -e /run/fail-once ]; then rm /run/fail-once; false; fi";
+        failsLater = "if [ -e /run/fail-later ]; then if [ -e /run/sampled ]; then false; else touch /run/sampled; fi; fi";
       };
       settleSeconds = 1;
       retrySeconds = 0;
@@ -73,6 +75,17 @@
         machine.succeed("touch /run/healthy")
         succeeds("true")
         same(current(), original)
+
+    with subtest("a check that fails only the first time before the upgrade still counts"):
+        machine.succeed("touch /run/fail-once")
+        succeeds("true")
+        machine.fail(f"test -e {state}/failing-before")
+
+    with subtest("a check that fails only the second time before the upgrade still counts"):
+        machine.succeed("touch /run/other-broken /run/fail-later")
+        upgrade("true")
+        same(read("failing-before"), "other")
+        machine.succeed("rm /run/other-broken /run/fail-later /run/sampled")
 
     with subtest("a system that fails its checks is reported, with nothing to roll back"):
         machine.succeed("rm /run/healthy")

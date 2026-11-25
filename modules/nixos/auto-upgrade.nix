@@ -99,14 +99,19 @@ let
       }
 
       remember() {
+        local failedFirst
         echo "$current" > "$systemBefore"
 
-        if runChecks /dev/null; then
-          rm -f "$failingBefore"
-        else
-          printf %s "$failed" > "$failingBefore"
-          echo "already failing before the upgrade, so not held against it:"
-          printf %s "$failures"
+        rm -f "$failingBefore"
+        if ! runChecks /dev/null; then
+          failedFirst=$failed
+          sleep 15
+          if ! runChecks /dev/null && grep -xF -f <(printf %s "$failedFirst") <<<"$failed" > "$failingBefore"; then
+            echo "already failing before the upgrade, so not held against it:"
+            cat "$failingBefore"
+          else
+            rm -f "$failingBefore"
+          fi
         fi
 
         if [ ! -e "$goodLink" ] || ! { is "$current" "$awaitingReboot" || is "$current" "$failedAfterReboot"; }; then
@@ -289,8 +294,8 @@ in
         command may take up to a minute, and finds coreutils, grep, iproute2,
         systemd and Nix on its `PATH`. If one keeps failing for
         `retrySeconds`, the machine rolls back to the previous system,
-        rebooting if the upgrade did. A check that already failed before
-        the upgrade does not count. docs/automatic-upgrades.md says when
+        rebooting if the upgrade did. A check that already fails before
+        the upgrade, twice 15 seconds apart, does not count. docs/automatic-upgrades.md says when
         an upgrade is tried again.
       '';
     };
