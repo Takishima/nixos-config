@@ -67,15 +67,7 @@ file, run `rotate`, and [write a new card](raspberry-pi.md#5-write-the-card).
    `PresharedKey` line if the client has none.
 5. Delete `~/rotated.txt`.
 
-## Where the VPN's settings are
-
-| What | Where |
-| --- | --- |
-| Port, subnet | `my.wireguard` in `hosts/rpizh/default.nix` |
-| IPv6 for the clients | `my.wireguard.subnet6` |
-| DNS and routes written into a new client's configuration | `my.wireguard.dns`, `my.wireguard.allowedIPs` |
-| The clients: name, public key, address, whether one is shut out | `hosts/rpizh/wireguard.json` |
-| The server's private key, the clients' preshared keys | `wireguard/private_key`, `wireguard/psk/<client>` in the sops file |
+## IPv6 for an older client
 
 `add` writes both addresses of a client when `my.wireguard.subnet6` is set. An
 older client gets IPv6 once its `Address` line has the second one:
