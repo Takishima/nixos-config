@@ -47,7 +47,6 @@ bad kernel would reboot the server twice every morning.
   back.
 - A commit that removes the checks. The upgraded system brings its own checks,
   so it is judged by what it says itself.
-- A broken `main`. The servers follow it whether CI passed or not.
 
 ## What the alerts say
 
