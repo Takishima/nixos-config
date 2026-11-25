@@ -123,8 +123,8 @@ land in the Nix store, readable by every user and pushed to the cache.
 ## 6. First boot
 
 1. On the router, reserve the address DHCP gives the Pi.
-2. Log in with `ssh damien@<the reserved address>`, using one of Damien's keys.
-   SSH does not accept passwords.
+2. Log in with `ssh damien@<the reserved address>`, using the `termius-rpi` or
+   the `homelinux-rpi` key. SSH does not accept passwords.
 3. Check the VPN:
 
    ```sh
@@ -222,7 +222,7 @@ VPN server `wireguard-<name>`. For another VPN server:
    | What | Option |
    | --- | --- |
    | The host name | `networking.hostName` |
-   | Who logs in | The import of `home/damien/server-account.nix`: Damien, with every key of `home/damien/ssh-keys.nix` |
+   | Who logs in | The import of `home/damien/server-account.nix`: Damien, with the keys `termius-rpi` and `homelinux-rpi` of `home/damien/ssh-keys.nix` |
    | The home network, which fail2ban spares | `my.hardened.neverBan` |
    | The VPN's port and subnet | `my.wireguard.port`, `my.wireguard.subnet` |
    | IPv6 and DNS for the VPN's clients | `my.wireguard.subnet6`, `my.wireguard.dns` |
