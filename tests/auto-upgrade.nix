@@ -189,5 +189,17 @@
         replacement = link(f"{original}/specialisation/next")
         succeeds(f"nix-env --profile {profile} --set {replacement}")
         same(read("pending"), replacement)
+
+    with subtest("a rollback that cannot be made is not reported as made"):
+        machine.succeed(
+            "mkdir -p /run/broken/bin",
+            "printf '#!/bin/sh\\nexit 1\\n' > /run/broken/bin/switch-to-configuration",
+            "chmod +x /run/broken/bin/switch-to-configuration",
+            f"ln -sfn /run/broken {good}",
+            f"echo {original} > {state}/pending",
+            f"rm -f {state}/report {state}/failing-before /run/healthy",
+        )
+        machine.fail("systemctl restart nixos-upgrade-confirm.service")
+        machine.fail(f"test -e {state}/report")
   '';
 }
