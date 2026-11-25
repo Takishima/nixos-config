@@ -17,7 +17,7 @@ Home-manager runs as a NixOS module, so one switch updates system and home.
 | `hosts/<host>/` | One machine: disk, hardware, which features are on. The flake takes every directory here |
 | `modules/nixos/` | One module per system feature, each behind a `my.*` option |
 | `modules/home/` | One home-manager module per program or domain, also under `my.*` |
-| `profiles/` | What a kind of machine needs: `raspberry-pi` |
+| `profiles/` | What a kind of machine needs: `raspberry-pi`, with `my.argonOne` for the fan of an Argon One case |
 | `home/damien/` | Damien's settings: `base.nix` for all, then `minimal.nix` for a server, or `default.nix` where he works and `homelinux.nix` on top. `server-account.nix` is his account on a server |
 | `overlays/`, `pkgs/` | Overlays and the packages they add |
 | `docs/` | Longer guides: provisioning a Raspberry Pi, the VPN's clients, how a VPN server is hardened and upgrades itself |
@@ -65,11 +65,6 @@ A feature with a system part and a home part uses one option name for both
 | `my.desktop.niri`, `my.desktop.noctalia` | Session, key bindings, bar and lock screen |
 
 `my.aiSkills` renders the skill trees in `skills/` into `~/.claude/skills`.
-
-`profiles/raspberry-pi`, exported with nixos-hardware's board module as
-`nixosModules.raspberry-pi-4` and `raspberry-pi-5`, goes on top of the
-modules: hardware, SD image, small-machine settings, and `my.argonOne`, the
-fan of an Argon One case.
 
 ## Reuse from another flake
 

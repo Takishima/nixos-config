@@ -298,9 +298,9 @@ in
         command may take up to a minute, and finds coreutils, grep, iproute2,
         systemd and Nix on its `PATH`. If one keeps failing for
         `retrySeconds`, the machine rolls back to the previous system,
-        rebooting if the upgrade did. A check that already fails before
-        the upgrade, twice 15 seconds apart, does not count. docs/automatic-upgrades.md says when
-        an upgrade is tried again.
+        rebooting if the upgrade did. A check that already fails before the
+        upgrade, twice 15 seconds apart, does not count.
+        docs/automatic-upgrades.md says when an upgrade is tried again.
       '';
     };
 

@@ -95,8 +95,6 @@ On an x86 machine, first allow Nix to build for aarch64:
 nix build .#packages.aarch64-linux.rpizh-sd-image
 ```
 
-The build does not read the secrets; the Pi decrypts them itself.
-
 cache.nixos.org does not have the Pi's kernel. CI builds it and pushes it to
 `dn-personal.cachix.org`. If your machine does not list that cache, name it, or
 the build compiles for hours:
@@ -116,10 +114,9 @@ takes the card and the 1Password item that holds the host key:
 nix run .#provision-rpizh -- /dev/<card> "op://<vault>/<item>"
 ```
 
-The command asks for sudo. Before it writes anything, it checks that the card
-is a whole, unmounted, removable disk and that the key is the one the secrets
-are encrypted for. Then it asks you to type the device name. The key goes from
-1Password to the card without touching the disk.
+The command asks for sudo. It refuses a card that is mounted or not removable,
+and a key the secrets are not encrypted for. Then it asks you to type the
+device name.
 
 Never put the private key in the configuration or in the image build. It would
 land in the Nix store, readable by every user and pushed to the cache.

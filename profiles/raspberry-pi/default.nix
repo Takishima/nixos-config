@@ -7,7 +7,6 @@
 }:
 {
   imports = [
-    # The FIRMWARE and NIXOS_SD partitions, and the image as system.build.sdImage.
     (modulesPath + "/installer/sd-card/sd-image.nix")
     ./argon-one.nix
   ];
