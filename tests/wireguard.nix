@@ -108,7 +108,10 @@ in
             subnet6 = "fd00:6::/64";
             dns = [ "10.6.0.1" ];
             allowedIPs = [ "10.6.0.0/24" ];
-            inherit (imported) peers;
+            peers = lib.mkMerge [
+              imported.peers
+              { phone.localNetwork = true; }
+            ];
           };
         };
       };
@@ -136,6 +139,7 @@ in
     { nodes, ... }:
     let
       homeAddress = nodes.home.networking.primaryIPAddress;
+      internetAddress = "203.0.113.1";
       serverAtHome = (lib.head nodes.server.networking.interfaces.eth2.ipv4.addresses).address;
     in
     assert lib.assertMsg (
@@ -146,9 +150,10 @@ in
       && !(nodes.fresh.my.autoUpgrade.checks ? wireguard)
       && lib.any (lib.hasInfix "my.wireguard") nodes.fresh.warnings
     ) "without its sops key, my.wireguard must open nothing and say so";
-    assert lib.assertMsg (lib.any (
-      { assertion, message }: !assertion && lib.hasInfix "wireguard/psk/<name>" message
-    ) withoutPresharedKey.config.assertions) "my.wireguard must refuse a client without a preshared key";
+    assert lib.assertMsg (lib.any
+      ({ assertion, message }: !assertion && lib.hasInfix "wireguard/psk/<name>" message)
+      withoutPresharedKey.config.assertions
+    ) "my.wireguard must refuse a client without a preshared key";
     ''
       import json
 
@@ -176,7 +181,7 @@ in
           client.wait_until_succeeds("ping -c 1 10.6.0.1")
           client.wait_until_succeeds("ping -c 1 fd00:6::1")
 
-      with subtest("a client reaches the home network, behind the server's address"):
+      with subtest("a client with localNetwork reaches the home network, behind the server's address"):
           # `home` has no route to the VPN: an answer shows the NAT.
           client.succeed("ping -c 1 -W 5 ${homeAddress}")
 
@@ -190,13 +195,21 @@ in
           tablet.succeed(
               "ip link add wg0 type wireguard",
               "wg set wg0 private-key /root/key peer ${keys.peer0.publicKey}"
-              " endpoint server:51820 allowed-ips 10.6.0.0/24",
+              " endpoint server:51820 allowed-ips 10.6.0.0/24,192.168.2.0/24,${internetAddress}/32",
               "ip address add 10.6.0.9/24 dev wg0",
               "ip link set wg0 up",
+              "ip route add 192.168.2.0/24 dev wg0",
+              "ip route add ${internetAddress} dev wg0",
           )
           tablet.wait_until_succeeds("ping -c 1 10.6.0.1")
           tablet.fail("ping -c 1 -W 2 10.6.0.2")
           client.fail("ping -c 1 -W 2 10.6.0.9")
+
+      with subtest("a client without localNetwork reaches the internet, not the home network"):
+          home.succeed("ip address add ${internetAddress}/32 dev lo")
+          server.succeed("ip route add ${internetAddress} via ${homeAddress}")
+          tablet.succeed("ping -c 1 -W 5 ${internetAddress}")
+          tablet.fail("ping -c 1 -W 2 ${homeAddress}")
 
       key = "SOPS_AGE_KEY=$(ssh-to-age -private-key -i ${sshKeys.snakeOilEd25519PrivateKey})"
 
@@ -318,6 +331,15 @@ in
           has_enable = state("repo", '.peers.tablet | has("enable")')
           assert has_enable == "false", has_enable
           server.fail(f"{without_key} disable nobody")
+
+      with subtest("local-network lets a client into the local network, until internet-only"):
+          server.succeed(f"{without_key} local-network tablet", f"{without_key} list | grep -E 'tablet.*local network'")
+          local = state("repo", ".peers.tablet.localNetwork")
+          assert local == "true", local
+          server.succeed(f"{without_key} internet-only tablet")
+          has_local = state("repo", '.peers.tablet | has("localNetwork")')
+          assert has_local == "false", has_local
+          server.fail(f"{without_key} local-network nobody")
 
       with subtest("a removed client is gone, with its preshared key"):
           server.succeed(f"{admin} remove tablet", f"{admin} list | grep -q phone")

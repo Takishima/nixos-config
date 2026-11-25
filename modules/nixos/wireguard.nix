@@ -18,6 +18,11 @@ let
   address6 = address: "${prefix6}${lib.last (lib.splitString "." address)}";
   hasIPv6 = cfg.subnet6 != null;
   peers = lib.filterAttrs (_: peer: peer.enable) cfg.peers;
+  acceptLocalClients = lib.concatMapStrings (
+    peer:
+    "ip saddr ${peer.address} accept\n"
+    + lib.optionalString hasIPv6 "ip6 saddr ${address6 peer.address} accept\n"
+  ) (lib.filter (peer: peer.localNetwork) (lib.attrValues peers));
   withoutPsk = lib.filter (name: !has (psk name)) (lib.attrNames peers);
 
   nameEachKey = pkgs.writeText "wg-peers.sed" (
@@ -54,8 +59,9 @@ in
 
   options.my.wireguard = {
     enable = lib.mkEnableOption ''
-      a WireGuard server that routes its clients to the local network and
-      the internet, but not to one another. Its private key is
+      a WireGuard server that routes its clients to the internet, those with
+      `localNetwork` to the local network too, and none to one another. Its
+      private key is
       `wireguard/private_key` in the sops file: without it nothing is started
       and no port is opened. Manage clients with `nix run .#wireguard-<host>`.
       On the server, `wg-peers` is `wg show wg0` with each client's name, for
@@ -102,6 +108,15 @@ in
               type = lib.types.bool;
               default = true;
               description = "Whether the client may connect.";
+            };
+            localNetwork = lib.mkOption {
+              type = lib.types.bool;
+              default = false;
+              description = ''
+                Whether the client reaches private addresses through the
+                server: its local network. Without it the client reaches the
+                internet only, so its DNS server has to be a public one.
+              '';
             };
           };
         }
@@ -210,6 +225,12 @@ in
                 chain forward {
                   type filter hook forward priority filter - 10; policy accept;
                   iifname "wg0" oifname "wg0" drop comment "VPN clients do not reach one another"
+                  iifname "wg0" ip daddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } jump local-network
+                  iifname "wg0" ip6 daddr fc00::/7 jump local-network
+                }
+                chain local-network {
+                  ${acceptLocalClients}
+                  drop
                 }
               '';
             };

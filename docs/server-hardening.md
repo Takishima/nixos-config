@@ -21,6 +21,8 @@
   could write there would decide what root runs next.
 - No client's private key is on the Pi. `wireguard-rpizh add` makes it where you
   run it, and shows it once.
+- A VPN client reaches the internet, not another client, and not the home
+  network unless it has `localNetwork`: Damien's own devices.
 - The firewall drops packets from the wrong interface and logs what it refuses.
   Only root reads the kernel log and kernel addresses. The kernel ignores
   redirects and source routes, loads no other kernel with kexec, and writes no

@@ -1,21 +1,5 @@
 {
   "peers": {
-    "me-desktop": {
-      "address": "10.56.236.4",
-      "publicKey": "LRq0fpUt1n5NJszo9p8FxlIrpslT8fjRfFWyIENiUBc="
-    },
-    "me-ipad": {
-      "address": "10.56.236.3",
-      "publicKey": "TH4hVK9NkJoKiEY9stgkjvSjFCsIpAknG6+5wTA+s1M="
-    },
-    "me-iphone": {
-      "address": "10.56.236.2",
-      "publicKey": "avN9MUYY4iI/H+inMbNmjMKubs1Lyq8iujFezp/70D8="
-    },
-    "dad-surface-26": {
-      "address": "10.56.236.8",
-      "publicKey": "TBTkx8WRFtz+2TOg6horWAitthPreeubr8iDSQPOrRc="
-    },
     "dad-ipad": {
       "address": "10.56.236.6",
       "publicKey": "w8hflL8PlnJcJ/9xeJFfBDpSS4Fo/k6cCWOC7cscyx4="
@@ -28,9 +12,28 @@
       "address": "10.56.236.7",
       "publicKey": "I5zYAgTHeTxZChQdecjdlENtTP2iX7YfFQgl+C0ey1k="
     },
+    "dad-surface-26": {
+      "address": "10.56.236.8",
+      "publicKey": "TBTkx8WRFtz+2TOg6horWAitthPreeubr8iDSQPOrRc="
+    },
     "dad-win2019": {
       "address": "10.56.236.9",
       "publicKey": "TpaHtp6g6sVSdaW0AGWIuUFLvchdXpadgOmwrKNwvmk="
+    },
+    "me-desktop": {
+      "address": "10.56.236.4",
+      "localNetwork": true,
+      "publicKey": "LRq0fpUt1n5NJszo9p8FxlIrpslT8fjRfFWyIENiUBc="
+    },
+    "me-ipad": {
+      "address": "10.56.236.3",
+      "localNetwork": true,
+      "publicKey": "TH4hVK9NkJoKiEY9stgkjvSjFCsIpAknG6+5wTA+s1M="
+    },
+    "me-iphone": {
+      "address": "10.56.236.2",
+      "localNetwork": true,
+      "publicKey": "avN9MUYY4iI/H+inMbNmjMKubs1Lyq8iujFezp/70D8="
     }
   },
   "publicKey": "041cPqGmqa61aO5Q+7x2Wnm08Jkui06255ew9vHWlj4="
