@@ -4,14 +4,6 @@
       "address": "10.117.17.9",
       "publicKey": "SsF2e8uyKgH7bOweAu5CEo3Q0Pnm+OIL0Q+e56xfWFo="
     },
-    "me-ipad": {
-      "address": "10.117.17.2",
-      "publicKey": "yLuMFnbhFH6AcQHUuaS8P9YogikZPRiQ8JfZe3eG4x8="
-    },
-    "me-iphone": {
-      "address": "10.117.17.3",
-      "publicKey": "mauUjWsarONf9LZ4D562gyvaC+LlytvpP6m/R1/haVE="
-    },
     "dad-dell": {
       "address": "10.117.17.6",
       "publicKey": "uXOosY8uggrSbOfAHzJALuQyb3/KDnabTSO596uXRwI="
@@ -32,13 +24,23 @@
       "address": "10.117.17.10",
       "publicKey": "0QY/KoBv3Ig7LuIwheqtaxJc9/YhYIXbtxSwjPH4lE0="
     },
-    "mom_macbook": {
-      "address": "10.117.17.8",
-      "publicKey": "qDJDSPgmmQjdHeVRvrhFb2WVwYRtocmz/1ZtuIFAxkE="
-    },
     "dad-win2019": {
       "address": "10.117.17.11",
       "publicKey": "6sMuA1qQircWqMQb01MCK2VyLIrt1bKTLmnyABfL8Qw="
+    },
+    "me-ipad": {
+      "address": "10.117.17.2",
+      "localNetwork": true,
+      "publicKey": "yLuMFnbhFH6AcQHUuaS8P9YogikZPRiQ8JfZe3eG4x8="
+    },
+    "me-iphone": {
+      "address": "10.117.17.3",
+      "localNetwork": true,
+      "publicKey": "mauUjWsarONf9LZ4D562gyvaC+LlytvpP6m/R1/haVE="
+    },
+    "mom_macbook": {
+      "address": "10.117.17.8",
+      "publicKey": "qDJDSPgmmQjdHeVRvrhFb2WVwYRtocmz/1ZtuIFAxkE="
     }
   },
   "publicKey": "TwWd/3oxxdpB3F8ppqN61KPZsOR6umYiuyZJRbGxNh0="

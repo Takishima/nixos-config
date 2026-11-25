@@ -14,12 +14,12 @@ the root of the checkout:
 nix run .#wireguard-rpizh -- add phone            # a new client
 nix run .#wireguard-rpizh -- list
 nix run .#wireguard-rpizh -- disable phone        # shut out, until `enable phone`
+nix run .#wireguard-rpizh -- local-network phone  # reaches the home network too, until `internet-only phone`
 nix run .#wireguard-rpizh -- remove phone
 ```
 
-`add`, `disable`, `enable`, `remove` and `rotate` change
-`hosts/rpizh/wireguard.json`. `add`, `remove` and `rotate` also change the keys
-in `secrets/rpizh.yaml`.
+Every command but `list` changes `hosts/rpizh/wireguard.json`. `add`, `remove`
+and `rotate` also change the keys in `secrets/rpizh.yaml`.
 
 Commit what changed to `main`. The server has the change after its next
 upgrade. To shut a client out at once, switch the server by hand: see
@@ -39,6 +39,8 @@ the QR code for the phone app.
   `--endpoint <public name>` gives it instead.
 - A client that made its own key pair hands in the public key,
   `--public-key <key>`, and keeps the other.
+- The client reaches the internet only. `local-network phone` lets it reach
+  the home network too.
 
 ## New keys after a leak
 

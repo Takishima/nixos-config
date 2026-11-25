@@ -53,6 +53,8 @@ writeShellApplication {
                                 $secrets
       disable <name>            shuts a client out, and keeps its address and keys
       enable <name>
+      local-network <name>      lets a client reach the server's local network too
+      internet-only <name>      takes that back: the client reaches the internet only
       remove <name>
       rotate [-o <file>]        a new key for the server and a new preshared key for
                                 every client; prints the two lines each client has
@@ -304,6 +306,16 @@ writeShellApplication {
         state | jq --arg name "$1" 'del(.peers[$name].enable)' | save
         ;;
 
+      local-network)
+        existing_client "''${1:-}"
+        state | jq --arg name "$1" '.peers[$name].localNetwork = true' | save
+        ;;
+
+      internet-only)
+        existing_client "''${1:-}"
+        state | jq --arg name "$1" 'del(.peers[$name].localNetwork)' | save
+        ;;
+
       remove)
         existing_client "''${1:-}"
         drop_secret "psk/$1"
@@ -347,7 +359,8 @@ writeShellApplication {
 
       list)
         state | jq -r '.peers | to_entries | sort_by(.value.address | split(".") | map(tonumber))[]
-          | [.key, .value.address, (if .value.enable == false then "disabled" else "" end), .value.publicKey] | @tsv' |
+          | [.key, .value.address, (if .value.enable == false then "disabled" else "" end),
+            (if .value.localNetwork then "local network" else "" end), .value.publicKey] | @tsv' |
           column -t -s $'\t'
         ;;
 
