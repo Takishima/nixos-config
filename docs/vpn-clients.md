@@ -6,20 +6,20 @@ server, and how to give the server new keys. The examples are for `rpizh`;
 
 `wireguard-rpizh` manages the clients from a checkout of this repository, on any
 machine. Set `SOPS_AGE_KEY` first, as in
-[step 2 of provisioning](raspberry-pi.md#2-secrets): `--sops` and `add` read
-`secrets/rpizh.yaml` with it. Then run the command at the root of the checkout:
+[step 2 of provisioning](raspberry-pi.md#2-secrets): `add`, `remove` and
+`rotate` read and write `secrets/rpizh.yaml` with it. Then run the command at
+the root of the checkout:
 
 ```sh
-nix run .#wireguard-rpizh -- --sops add phone     # a new client
+nix run .#wireguard-rpizh -- add phone            # a new client
 nix run .#wireguard-rpizh -- list
 nix run .#wireguard-rpizh -- disable phone        # shut out, until `enable phone`
-nix run .#wireguard-rpizh -- --sops remove phone
+nix run .#wireguard-rpizh -- remove phone
 ```
 
 `add`, `disable`, `enable`, `remove` and `rotate` change
-`hosts/rpizh/wireguard.json`. With `--sops`, `add`, `remove` and `rotate` also
-change the keys in `secrets/rpizh.yaml`. Without it, they print what to change
-there.
+`hosts/rpizh/wireguard.json`. `add`, `remove` and `rotate` also change the keys
+in `secrets/rpizh.yaml`.
 
 Commit what changed to `main`. The server has the change after its next
 upgrade. To shut a client out at once, switch the server by hand: see
@@ -35,8 +35,8 @@ the QR code for the phone app.
 
 - Nothing else keeps the client's private key. Scan the code then, or have the
   configuration written with `-o phone.conf`.
-- The endpoint in the configuration is `wireguard/endpoint` of the sops file,
-  read with `SOPS_AGE_KEY`. `--endpoint <public name>` gives it instead.
+- The endpoint in the configuration is `wireguard/endpoint` of the sops file.
+  `--endpoint <public name>` gives it instead.
 - A client that made its own key pair hands in the public key,
   `--public-key <key>`, and keeps the other.
 
@@ -56,7 +56,7 @@ file, run `rotate`, and [write a new card](raspberry-pi.md#5-write-the-card).
 1. Make the new keys, in a file outside the checkout:
 
    ```sh
-   nix run .#wireguard-rpizh -- --sops rotate -o ~/rotated.txt
+   nix run .#wireguard-rpizh -- rotate -o ~/rotated.txt
    ```
 
 2. Commit `hosts/rpizh/wireguard.json` and `secrets/rpizh.yaml` to `main`.
