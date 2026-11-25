@@ -218,7 +218,7 @@ The commands for `rpizh`; `rpius` has the same under its name:
 
 ```sh
 nix run .#provision-rpizh -- /dev/<card> "op://<vault>/<item>"     # write a card, with its host key
-nix run .#wireguard-rpizh -- --sops add <client>                   # a new VPN client; needs SOPS_AGE_KEY
+nix run .#wireguard-rpizh -- add <client>                          # a new VPN client; needs SOPS_AGE_KEY
 wg-peers                                                           # the VPN's clients by name, on the Pi, as root
 nixos-rebuild switch --refresh --flake github:takishima/nixos-config/rpi#rpizh   # update at once, on the Pi, as root
 ```

@@ -42,7 +42,7 @@ writeShellApplication {
 
     usage() {
       cat <<EOF
-    Usage: wireguard-${host} [--sops] <command>
+    Usage: wireguard-${host} <command>
 
       init                      a new server: makes its key
       import <wg0.conf|.tgz>    an existing server and its clients, from its
@@ -59,10 +59,9 @@ writeShellApplication {
                                 to change. The clients keep their key pairs
       list
 
-    Run it at the root of the repository. It writes $file;
-    commit that file. The keys that are secret are printed for you to put in
-    $secrets, or written there with --sops, which needs
-    sops to be able to decrypt that file (SOPS_AGE_KEY).
+    Run it at the root of the repository. It writes $file,
+    and the keys that are secret to $secrets, which sops has
+    to be able to decrypt (SOPS_AGE_KEY). Commit both files.
     EOF
     }
 
@@ -71,16 +70,15 @@ writeShellApplication {
       exit 1
     }
 
-    sops=
-    if [ "''${1:-}" = --sops ]; then
-      sops=1
-      shift
-      sops decrypt "$secrets" >/dev/null || die "sops cannot decrypt $secrets: is SOPS_AGE_KEY set?"
-    fi
     command=''${1:-}
     [ $# -gt 0 ] && shift
     [ -z "$command" ] || [ -d "$(dirname "$file")" ] ||
       die "no $(dirname "$file") here: run it at the root of the repository"
+    case $command in
+      init | import | add | remove | rotate)
+        sops decrypt "$secrets" >/dev/null || die "sops cannot decrypt $secrets: is SOPS_AGE_KEY set?"
+        ;;
+    esac
 
     state() {
       if [ -f "$file" ]; then cat "$file"; else echo '{"publicKey": null, "peers": {}}'; fi
@@ -114,10 +112,6 @@ writeShellApplication {
     }
     drop_secret() {
       local index
-      if [ -z "$sops" ]; then
-        echo "Remove wireguard/$1 from $secrets." >&2
-        return
-      fi
       index=$(sops_index "$1")
       if sops decrypt --extract "$index" "$secrets" >/dev/null 2>&1; then
         sops unset "$secrets" "$index"
@@ -125,34 +119,18 @@ writeShellApplication {
     }
     write_secrets() {
       [ ''${#pending[@]} -gt 0 ] || return 0
-      local entry psk="" before
-      if [ -n "$sops" ]; then
-        before=$(mktemp)
-        cp "$secrets" "$before"
-        for entry in "''${pending[@]}"; do
-          # printf is a shell builtin: the secret appears on no command line.
-          printf %s "''${entry#*=}" | jq -Rs . |
-            sops set --value-stdin "$secrets" "$(sops_index "''${entry%%=*}")" || {
-            mv "$before" "$secrets"
-            die "sops could not write wireguard/''${entry%%=*}: $secrets is as it was"
-          }
-        done
-        rm "$before"
-        return 0
-      fi
-      echo "Put these in $secrets (sops $secrets), then commit and switch:" >&2
-      echo "wireguard:"
+      local entry before
+      before=$(mktemp)
+      cp "$secrets" "$before"
       for entry in "''${pending[@]}"; do
-        case $entry in
-          psk/*)
-            [ -n "$psk" ] || echo "    psk:"
-            psk=1
-            entry=''${entry#psk/}
-            echo "        ''${entry%%=*}: \"''${entry#*=}\""
-            ;;
-          *) echo "    ''${entry%%=*}: \"''${entry#*=}\"" ;;
-        esac
+        # printf is a shell builtin: the secret appears on no command line.
+        printf %s "''${entry#*=}" | jq -Rs . |
+          sops set --value-stdin "$secrets" "$(sops_index "''${entry%%=*}")" || {
+          mv "$before" "$secrets"
+          die "sops could not write wireguard/''${entry%%=*}: $secrets is as it was"
+        }
       done
+      rm "$before"
     }
 
     case $command in
@@ -271,7 +249,7 @@ writeShellApplication {
         done
         if [ -z "$endpoint" ]; then
           endpoint=$(sops decrypt --extract '["wireguard"]["endpoint"]' "$secrets" 2>/dev/null) ||
-            die "say what clients connect to: --endpoint <public name>, or wireguard/endpoint in $secrets (needs SOPS_AGE_KEY)"
+            die "say what clients connect to: --endpoint <public name>, or wireguard/endpoint in $secrets"
         fi
         serverKey=$(server_key)
         if has_client "$name"; then die "there is a client $name already"; fi

@@ -67,14 +67,13 @@ To keep a password of the old system, take its hash there:
 writes the clients to `hosts/rpizh/wireguard.json` and the keys to the secrets:
 
 ```sh
-nix run .#wireguard-rpizh -- --sops import wg0.conf
+nix run .#wireguard-rpizh -- import wg0.conf
 git add hosts/rpizh/wireguard.json secrets/rpizh.yaml
 ```
 
 Every client keeps its key, its preshared key and its address, so none has to
 be set up again. A client PiVPN had disabled stays disabled
-(`"enable": false`). Without `--sops`, the command prints the keys for you to
-paste into `sops secrets/rpizh.yaml`.
+(`"enable": false`).
 
 If the command refuses the server's address or reports another port, set
 `my.wireguard.subnet` and `my.wireguard.port` in `hosts/rpizh/default.nix` to
@@ -253,8 +252,8 @@ VPN server `wireguard-<name>`. For another VPN server:
    server and clients: replace its content with `{"peers": {}}`, then:
 
    ```sh
-   nix run .#wireguard-<name> -- --sops init      # a new server, or
-   nix run .#wireguard-<name> -- --sops import wg0.conf
+   nix run .#wireguard-<name> -- init      # a new server, or
+   nix run .#wireguard-<name> -- import wg0.conf
    ```
 
 6. Follow steps 4 to 6 above with `<name>` for `rpizh`.
