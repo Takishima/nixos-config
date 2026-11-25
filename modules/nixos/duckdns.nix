@@ -42,6 +42,36 @@ in
         systemd.services.duckdns = {
           wants = [ "network-online.target" ];
           after = [ "network-online.target" ];
+          serviceConfig = {
+            CapabilityBoundingSet = "";
+            LockPersonality = true;
+            MemoryDenyWriteExecute = true;
+            PrivateDevices = true;
+            PrivateUsers = true;
+            ProcSubset = "pid";
+            ProtectClock = true;
+            ProtectControlGroups = true;
+            ProtectHome = true;
+            ProtectHostname = true;
+            ProtectKernelLogs = true;
+            ProtectKernelModules = true;
+            ProtectKernelTunables = true;
+            ProtectProc = "invisible";
+            # AF_UNIX reaches nscd, which resolves names.
+            RestrictAddressFamilies = [
+              "AF_INET"
+              "AF_INET6"
+              "AF_UNIX"
+            ];
+            RestrictNamespaces = true;
+            RestrictRealtime = true;
+            SystemCallArchitectures = "native";
+            SystemCallFilter = [
+              "@system-service"
+              "~@privileged"
+              "~@resources"
+            ];
+          };
         };
       })
     ]
