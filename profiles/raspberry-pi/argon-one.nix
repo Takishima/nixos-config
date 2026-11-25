@@ -3,6 +3,7 @@
 {
   config,
   lib,
+  options,
   pkgs,
   ...
 }:
@@ -10,6 +11,9 @@
   options.my.argonOne.enable = lib.mkEnableOption "the fan of an Argon One case, at the speeds of Argon's own daemon";
 
   config = lib.mkIf config.my.argonOne.enable {
+    ${if options.my ? autoUpgrade then "my" else null}.autoUpgrade.checks.argon-one-fan =
+      "systemctl is-active --quiet argon-one-fan.service";
+
     hardware.i2c.enable = true;
     hardware.raspberry-pi.configtxt.settings.all.dtparam = [ "i2c_arm=on" ];
 
@@ -17,7 +21,35 @@
       description = "Argon One case fan";
       wantedBy = [ "multi-user.target" ];
       path = [ pkgs.i2c-tools ];
-      serviceConfig.Restart = "always";
+      serviceConfig = {
+        Restart = "always";
+        DynamicUser = true;
+        SupplementaryGroups = [ config.hardware.i2c.group ];
+        DevicePolicy = "closed";
+        DeviceAllow = "/dev/i2c-1 rw";
+        PrivateNetwork = true;
+        RestrictAddressFamilies = "none";
+        CapabilityBoundingSet = "";
+        LockPersonality = true;
+        MemoryDenyWriteExecute = true;
+        ProcSubset = "pid";
+        ProtectClock = true;
+        ProtectControlGroups = true;
+        ProtectHome = true;
+        ProtectHostname = true;
+        ProtectKernelLogs = true;
+        ProtectKernelModules = true;
+        ProtectKernelTunables = true;
+        ProtectProc = "invisible";
+        RestrictNamespaces = true;
+        RestrictRealtime = true;
+        SystemCallArchitectures = "native";
+        SystemCallFilter = [
+          "@system-service"
+          "~@privileged"
+          "~@resources"
+        ];
+      };
       script = ''
         set -u
         speed=-1
@@ -36,7 +68,8 @@
             cool=0
           fi
           if [ "$want" -ne "$speed" ]; then
-            i2cset -y 1 0x1a "$want" && speed=$want
+            i2cset -y 1 0x1a "$want"
+            speed=$want
           fi
           sleep 10
         done
