@@ -8,6 +8,7 @@ let
   cfg = config.my.autoUpgrade;
   inherit (config.my.alerts.healthchecksIo) ping;
   bootAttempts = 3;
+  rollbackAttempts = 2;
   skipDays = 7;
   report = "/var/lib/nixos-upgrade/report";
   # The checks, then a rollback, which is another switch.
@@ -203,7 +204,7 @@ let
           boots=$(($(count "$bootsAfterRollback") + 1))
           echo "$boots" > "$bootsAfterRollback"
           sync "$bootsAfterRollback"
-          if [ "$boots" -gt 2 ]; then
+          if [ "$boots" -gt ${toString rollbackAttempts} ]; then
             echo "booted $current again and again, although it failed its checks: staying on it"
             exit 1
           fi
