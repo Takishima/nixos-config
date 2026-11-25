@@ -18,7 +18,7 @@ let
   address6 = address: "${prefix6}${lib.last (lib.splitString "." address)}";
   hasIPv6 = cfg.subnet6 != null;
   peers = lib.filterAttrs (_: peer: peer.enable) cfg.peers;
-  withPsk = lib.filter (name: has (psk name)) (lib.attrNames peers);
+  withoutPsk = lib.filter (name: !has (psk name)) (lib.attrNames peers);
 
   nameEachKey = pkgs.writeText "wg-peers.sed" (
     lib.concatLines (lib.mapAttrsToList (name: peer: "s|${peer.publicKey}|${name} (&)|") peers)
@@ -108,8 +108,9 @@ in
       );
       default = { };
       description = ''
-        The clients, by name. One with a `wireguard/psk/<name>` in the sops
-        file has to present that preshared key too.
+        The clients, by name. Each one that is enabled needs its preshared
+        key, `wireguard/psk/<name>`, in the sops file: `wireguard-<host> add`
+        writes it.
       '';
     };
 
@@ -161,6 +162,17 @@ in
       })
 
       (lib.mkIf (has privateKey) {
+        assertions = [
+          {
+            assertion = withoutPsk == [ ];
+            message = ''
+              my.wireguard: the sops file has no wireguard/psk/<name> for
+              ${toString withoutPsk}. Disable the client, or give every client
+              a preshared key with `wireguard-<host> rotate`.
+            '';
+          }
+        ];
+
         environment.systemPackages = [ wgPeers ];
 
         my.autoUpgrade.checks.wireguard = "systemctl is-active --quiet wireguard-wg0.service";
@@ -168,12 +180,12 @@ in
         sops.secrets = {
           ${privateKey}.restartUnits = [ "wireguard-wg0.service" ];
         }
-        // lib.genAttrs' withPsk (
-          name:
+        // lib.mapAttrs' (
+          name: _:
           lib.nameValuePair (psk name) {
             restartUnits = [ "wireguard-wg0-peer-${name}.service" ];
           }
-        );
+        ) peers;
 
         networking = {
           wireguard.interfaces.wg0 = {
@@ -184,7 +196,7 @@ in
               inherit name;
               inherit (peer) publicKey;
               allowedIPs = [ "${peer.address}/32" ] ++ lib.optional hasIPv6 "${address6 peer.address}/128";
-              presharedKeyFile = if lib.elem name withPsk then secretFile (psk name) else null;
+              presharedKeyFile = secretFile (psk name);
             }) peers;
           };
 

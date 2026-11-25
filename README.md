@@ -157,7 +157,7 @@ The system builds without the file. Each key turns its feature on:
 | `duckdns/token`, `duckdns/domains` | DuckDNS account token; its names, one per line | No DuckDNS updates |
 | `healthchecks/url` | Ping URL of the host's healthchecks.io check | Nothing is reported |
 | `wireguard/private_key` | The VPN server's private key | The VPN is not started |
-| `wireguard/psk/<client>` | Preshared key of the client `<client>` | That client connects without one |
+| `wireguard/psk/<client>` | Preshared key of the client `<client>` | The host does not build while that client is enabled |
 | `wireguard/endpoint` | Public name clients connect to, for `wireguard-<host> add` | `add` needs `--endpoint` |
 | `netrc` | Credentials for private caches, at `/etc/nix/netrc` | Public caches only |
 | `nixbuild_ssh_key` | Private key of the nixbuild.net account | No remote builds |

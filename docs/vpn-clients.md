@@ -63,8 +63,7 @@ file, run `rotate`, and [write a new card](raspberry-pi.md#5-write-the-card).
 3. Switch the server: see [Updates](raspberry-pi.md#updates). From then on, no
    client connects with its old configuration.
 4. In each client's configuration, set `PublicKey` and `PresharedKey` in the
-   `[Peer]` section to its two lines from `~/rotated.txt`. Add the
-   `PresharedKey` line if the client has none.
+   `[Peer]` section to its two lines from `~/rotated.txt`.
 5. Delete `~/rotated.txt`.
 
 ## IPv6 for an older client
