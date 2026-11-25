@@ -11,23 +11,41 @@ let
   hasUrl = config.my.secrets.has secret;
   url = config.sops.secrets.${secret}.path;
 
+  socket = "/run/healthchecks-ping.sock";
+  giveUpSeconds = 600;
+
   ping = pkgs.writeShellApplication {
     name = "healthchecks-ping";
     runtimeInputs = [
       pkgs.coreutils
-      pkgs.curl
+      pkgs.socat
     ];
     text = ''
       suffix=$1
       title=$2
-      # Not as an argument, which every user can read: the URL is a secret.
-      {
+      answer=$({
+        echo "$suffix"
         echo "$title"
         tail -c 10000
-      } | curl --config <(printf 'url = "%s%s"\n' "$(cat ${url})" "$suffix") \
+      } | socat -t ${toString (giveUpSeconds + 60)} - UNIX-CONNECT:${socket})
+      if [ "$answer" != sent ]; then
+        echo "healthchecks-ping: not sent, see the journal of healthchecks-ping@*.service" >&2
+        exit 1
+      fi
+    '';
+  };
+
+  send = pkgs.writeShellApplication {
+    name = "healthchecks-send";
+    runtimeInputs = [ pkgs.curl ];
+    text = ''
+      read -r suffix
+      # Not as an argument, which every user can read: the URL is a secret.
+      curl --config <(printf 'url = "%s%s"\n' "$(<"$CREDENTIALS_DIRECTORY/url")" "$suffix") \
         --fail --silent --show-error --output /dev/null \
-        --max-time 30 --retry 10 --retry-delay 30 --retry-all-errors \
+        --max-time 30 --retry-max-time ${toString giveUpSeconds} --retry-delay 30 --retry-all-errors \
         --data-binary @-
+      echo sent
     '';
   };
 
@@ -39,7 +57,10 @@ let
       journalctl --boot --unit "$1" --lines 100 --output cat --no-pager \
         | ${lib.getExe ping} "${suffix}" "$1 ${outcome}"
     '';
-    serviceConfig.Type = "oneshot";
+    serviceConfig = {
+      Type = "oneshot";
+      PrivateNetwork = true;
+    };
   };
 in
 {
@@ -97,6 +118,16 @@ in
 
         sops.secrets.${secret} = { };
 
+        systemd.sockets.healthchecks-ping = {
+          description = "Pings for healthchecks.io";
+          wantedBy = [ "sockets.target" ];
+          socketConfig = {
+            ListenStream = socket;
+            Accept = true;
+            SocketMode = "0600";
+          };
+        };
+
         systemd.services = lib.mkMerge [
           (lib.genAttrs cfg.units (_: {
             onFailure = [ "healthchecks-fail@%n.service" ];
@@ -110,6 +141,44 @@ in
             };
             "healthchecks-success@" = reportOn "" "succeeded" // {
               description = "Report that %i succeeded";
+            };
+            "healthchecks-ping@" = {
+              description = "Send a ping to healthchecks.io";
+              serviceConfig = {
+                ExecStart = lib.getExe send;
+                StandardInput = "socket";
+                StandardError = "journal";
+                DynamicUser = true;
+                LoadCredential = "url:${url}";
+                CapabilityBoundingSet = "";
+                LockPersonality = true;
+                MemoryDenyWriteExecute = true;
+                PrivateDevices = true;
+                PrivateUsers = true;
+                ProcSubset = "pid";
+                ProtectClock = true;
+                ProtectControlGroups = true;
+                ProtectHome = true;
+                ProtectHostname = true;
+                ProtectKernelLogs = true;
+                ProtectKernelModules = true;
+                ProtectKernelTunables = true;
+                ProtectProc = "invisible";
+                # AF_UNIX reaches nscd, which resolves names.
+                RestrictAddressFamilies = [
+                  "AF_INET"
+                  "AF_INET6"
+                  "AF_UNIX"
+                ];
+                RestrictNamespaces = true;
+                RestrictRealtime = true;
+                SystemCallArchitectures = "native";
+                SystemCallFilter = [
+                  "@system-service"
+                  "~@privileged"
+                  "~@resources"
+                ];
+              };
             };
           }
         ];

@@ -23,6 +23,9 @@
   run it, and shows it once.
 - A VPN client reaches the internet, not another client, and not the home
   network unless it has `localNetwork`: Damien's own devices.
+- One unit talks to healthchecks.io, as a user of its own that holds nothing
+  but the check's address. What reports a failure runs as root without a
+  network, and hands its text over a socket only root may write to.
 - The firewall drops packets from the wrong interface and logs what it refuses.
   Only root reads the kernel log and kernel addresses. The kernel ignores
   redirects and source routes, loads no other kernel with kexec, and writes no
