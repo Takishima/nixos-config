@@ -74,18 +74,6 @@
     services = {
       journald.settings.Journal.SystemMaxUse = "100M";
       fstrim.enable = true;
-      # <hostname>.local on the home network, not for a VPN's clients.
-      avahi = {
-        enable = true;
-        nssmdns4 = true;
-        settings = {
-          publish = {
-            disable-publishing = false;
-            publish-addresses = true;
-          };
-          server.deny-interfaces = [ "wg0" ];
-        };
-      };
     };
 
     nix.settings = {
