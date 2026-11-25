@@ -104,6 +104,10 @@ in
           machine.succeed("touch /run/job-works", "systemctl start job.service")
           pinged("PING /ping/snakeoil", "job.service succeeded")
 
+      with subtest("only root pings"):
+          status, out = machine.execute("su nobody -s /bin/sh -c '${nodes.machine.my.alerts.healthchecksIo.ping} /fail intruder' 2>&1 </dev/null")
+          assert status != 0 and "Permission denied" in out, out
+
       with subtest("a rollback that rebooted is reported once the machine is back"):
           machine.succeed("echo 'check failed: sshd' > /var/lib/nixos-upgrade/report")
           machine.succeed("systemctl start nixos-upgrade-report.service")
