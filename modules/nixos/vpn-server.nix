@@ -23,8 +23,9 @@ in
     a VPN server reachable from the internet. Turns on `my.wireguard`,
     `my.sshServer`, `my.hardened`, `my.duckdns`, `my.autoUpgrade`,
     `my.alerts.healthchecksIo`, and `my.nix.nixbuild` for the server's own
-    system. The host sets who logs in, its home network, and the VPN's
-    port, subnet and clients'';
+    system. The server upgrades at 06:00 in `my.locale.timeZone`, and
+    reboots for a new kernel before 08:00. The host sets who logs in, its
+    home network, its time zone, and the VPN's port, subnet and clients'';
 
   config = lib.mkIf config.my.vpnServer.enable {
     my = {
@@ -44,6 +45,11 @@ in
       };
       autoUpgrade = {
         enable = lib.mkDefault true;
+        dates = lib.mkDefault "06:00";
+        rebootWindow = lib.mkDefault {
+          lower = "05:30";
+          upper = "08:00";
+        };
         # An upgrade that can still fetch the next one can be fixed by it.
         checks = {
           upgrade-timer = "systemctl is-active --quiet nixos-upgrade.timer";

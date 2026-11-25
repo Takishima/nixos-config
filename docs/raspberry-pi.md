@@ -142,8 +142,9 @@ The Pi follows `rpi` of this repository by itself (`my.autoUpgrade`). CI moves
 `rpi` to a commit of `main` once its checks pass and the cache has its builds,
 so a change reaches the Pi by being merged. Every morning around 06:00 the Pi
 switches to `github:takishima/nixos-config/rpi#rpizh`, and reboots before 08:00
-if the kernel changed. `my.autoUpgrade.dates` and `rebootWindow` in
-`hosts/rpizh/default.nix` set the hours.
+if the kernel changed. The hours are in the Pi's own time zone,
+`my.locale.timeZone`. To change them for one Pi, set `my.autoUpgrade.dates` and
+`rebootWindow` in `hosts/rpizh/default.nix`.
 
 The repository has to stay public: the Pi fetches it without credentials.
 
@@ -227,7 +228,6 @@ VPN server `wireguard-<name>`. For another VPN server:
    | The VPN's port and subnet | `my.wireguard.port`, `my.wireguard.subnet` |
    | IPv6 and DNS for the VPN's clients | `my.wireguard.subnet6`, `my.wireguard.dns` |
    | The time zone and the locales | `my.locale` |
-   | The hours it upgrades and reboots in, in that time zone | `my.autoUpgrade.dates`, `rebootWindow` |
    | The fan, if the Pi is in an Argon One case | `my.argonOne.enable` |
 
    Keep the import of `home/damien/server-account.nix` unless you work on the

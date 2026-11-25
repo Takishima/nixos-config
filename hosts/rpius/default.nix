@@ -19,15 +19,6 @@
 
     hardened.neverBan = [ "192.168.1.*" ];
 
-    # 06:00 here is noon in Zurich.
-    autoUpgrade = {
-      dates = "06:00";
-      rebootWindow = {
-        lower = "05:30";
-        upper = "08:00";
-      };
-    };
-
     # PiVPN's port and network, which the clients it set up still use.
     wireguard = {
       port = 1194;
