@@ -47,7 +47,7 @@ A server runs as root what these give it:
 
 | What | It gives the server |
 | --- | --- |
-| `main` of this repository | The system it follows |
+| `rpi` of this repository, which CI moves along `main` | The system it follows |
 | `cache.nixos.org` | Everything nixpkgs builds |
 | `dn-personal.cachix.org` | What CI builds: the Pis' kernel above all |
 | `nix-community.cachix.org` | Some paths CI takes from there |
