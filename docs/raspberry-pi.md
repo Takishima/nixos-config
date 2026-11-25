@@ -123,8 +123,8 @@ land in the Nix store, readable by every user and pushed to the cache.
 ## 6. First boot
 
 1. On the router, reserve the address DHCP gives the Pi.
-2. Log in with `ssh damien@rpizh.local`, using one of Damien's keys. SSH does
-   not accept passwords.
+2. Log in with `ssh damien@<the reserved address>`, using one of Damien's keys.
+   SSH does not accept passwords.
 3. Check the VPN:
 
    ```sh
