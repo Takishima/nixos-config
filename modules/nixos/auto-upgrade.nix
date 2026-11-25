@@ -74,8 +74,9 @@ let
       }
 
       healthy() {
-        local exemptChecks=$1 deadline=$((SECONDS + ${toString cfg.retrySeconds}))
+        local exemptChecks=$1 deadline
         sleep ${toString cfg.settleSeconds}
+        deadline=$((SECONDS + ${toString cfg.retrySeconds}))
         until runChecks "$exemptChecks"; do
           if [ "$SECONDS" -ge "$deadline" ]; then
             printf %s "$failures"
