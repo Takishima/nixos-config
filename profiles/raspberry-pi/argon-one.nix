@@ -6,23 +6,6 @@
   pkgs,
   ...
 }:
-let
-  # Argon's own curve: from each temperature in °C, a fan speed in percent.
-  curve = [
-    {
-      at = 55;
-      percent = 30;
-    }
-    {
-      at = 60;
-      percent = 55;
-    }
-    {
-      at = 65;
-      percent = 100;
-    }
-  ];
-in
 {
   options.my.argonOne.enable = lib.mkEnableOption "the fan of an Argon One case, at the speeds of Argon's own daemon";
 
@@ -42,9 +25,9 @@ in
         while true; do
           temp=$(( $(cat /sys/class/thermal/thermal_zone0/temp) / 1000 ))
           want=0
-          ${lib.concatMapStrings (step: ''
-            if [ "$temp" -ge ${toString step.at} ]; then want=${toString step.percent}; fi
-          '') curve}
+          if [ "$temp" -ge 55 ]; then want=30; fi
+          if [ "$temp" -ge 60 ]; then want=55; fi
+          if [ "$temp" -ge 65 ]; then want=100; fi
           # Speed up at once, slow down only at the third reading below the step.
           if [ "$want" -lt "$speed" ]; then
             cool=$((cool + 1))
