@@ -39,19 +39,17 @@ let
         zstd card.img -o $out
       '';
 
-  # The test key's age recipient: fixtures/secrets.yaml is encrypted for it.
-  recipient = "age1rqz9lhprtuea2rglxfuuvgkccyzar25ta66gsea2mg86kuspcqdshcehps";
-
   provisionFor =
-    recipients:
+    secrets:
     lib.getExe (
       pkgs.callPackage ../pkgs/provision-pi.nix {
         host = "testpi";
-        inherit image recipients;
+        inherit image secrets;
       }
     )
     + " --yes";
-  provision = provisionFor [ recipient ];
+  provision = provisionFor ./fixtures/secrets.yaml;
+  forAnotherKey = pkgs.writeText "secrets.yaml" "recipient: age1someoneelse";
 
   op = pkgs.writeShellScriptBin "op" ''
     case $2 in
@@ -72,7 +70,7 @@ in
     machine.wait_for_unit("multi-user.target")
 
     with subtest("a key the secrets are not for is refused, the card untouched"):
-        machine.fail("${provisionFor [ "age1someoneelse" ]} --fixed-disk /dev/vdb op://vault/host")
+        machine.fail("${provisionFor forAnotherKey} --fixed-disk /dev/vdb op://vault/host")
         machine.fail("blkid /dev/vdb")
 
     with subtest("a disk that is not removable is refused"):

@@ -90,7 +90,6 @@
         system: (inputs.treefmt-nix.lib.evalModule pkgsFor.${system} ./treefmt.nix).config.build
       );
 
-      # Every directory of hosts/ is a machine.
       hosts = lib.attrNames (lib.filterAttrs (_: type: type == "directory") (builtins.readDir ./hosts));
       configOf = host: self.nixosConfigurations.${host}.config;
       buildOf = host: (configOf host).system.build;
@@ -98,24 +97,6 @@
       pis = lib.filter (host: self.nixosConfigurations.${host}.options ? sdImage) hosts;
       wireguardServers = lib.filter (host: (configOf host).my.wireguard.enable) hosts;
 
-      # The age recipients a sops file is encrypted for.
-      recipientsOf =
-        file:
-        let
-          found = lib.concatMap (
-            line:
-            let
-              recipient = builtins.match " *(- )?recipient: (age1[a-z0-9]+)" line;
-            in
-            lib.optional (recipient != null) (lib.last recipient)
-          ) (lib.splitString "\n" (builtins.readFile file));
-        in
-        if file == null then
-          [ ]
-        else if found == [ ] then
-          throw "no age recipient found in ${toString file}"
-        else
-          found;
     in
     {
       nixosConfigurations = lib.genAttrs hosts (
@@ -184,7 +165,7 @@
             pkgsFor.${system}.callPackage ./pkgs/provision-pi.nix {
               inherit host;
               image = (buildOf host).sdImage;
-              recipients = recipientsOf (configOf host).my.secrets.file;
+              secrets = (configOf host).my.secrets.file;
             }
           )
         )

@@ -17,8 +17,8 @@
   host,
   # The directory system.build.sdImage makes, or an .img.zst file.
   image,
-  # age recipients of the host's sops file: the key has to be one of them.
-  recipients ? [ ],
+  # The host's sops file, or null: the key has to be one it is encrypted for.
+  secrets,
 }:
 writeShellApplication {
   name = "provision-${host}";
@@ -105,13 +105,10 @@ writeShellApplication {
       die "cannot read the private key of $item"
     ssh-keygen -y -f "$work/key" >"$work/key.pub" || die "$item does not hold an SSH private key"
     grep -q '^ssh-ed25519 ' "$work/key.pub" || die "the key of $item is not an Ed25519 key"
-    ${lib.optionalString (recipients != [ ]) ''
+    ${lib.optionalString (secrets != null) ''
       recipient=$(ssh-to-age <"$work/key.pub")
-      recipients=${lib.escapeShellArg (toString recipients)}
-      case " $recipients " in
-        *" $recipient "*) ;;
-        *) die "the key of $item is $recipient, which ${host}'s secrets are not encrypted for: pass the item of ${host}'s host key, or add that recipient to .sops.yaml and run sops updatekeys secrets/${host}.yaml" ;;
-      esac
+      grep -q "recipient: $recipient\$" ${secrets} ||
+        die "the key of $item is $recipient, which ${host}'s secrets are not encrypted for: pass the item of ${host}'s host key, or add that recipient to .sops.yaml and run sops updatekeys secrets/${host}.yaml"
     ''}
 
     echo "About to erase:"
