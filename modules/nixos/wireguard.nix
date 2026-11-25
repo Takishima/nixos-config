@@ -8,6 +8,8 @@ let
   cfg = config.my.wireguard;
   inherit (config.my.secrets) has;
 
+  ownClients = ../../hosts + "/${config.networking.hostName}/wireguard.json";
+
   privateKey = "wireguard/private_key";
   psk = name: "wireguard/psk/${name}";
   secretFile = name: config.sops.secrets.${name}.path;
@@ -121,7 +123,8 @@ in
           };
         }
       );
-      default = { };
+      default = if builtins.pathExists ownClients then (lib.importJSON ownClients).peers else { };
+      defaultText = lib.literalMD "the `peers` of `hosts/<hostname>/wireguard.json` of this repository, if there is one";
       description = ''
         The clients, by name. Each one that is enabled needs its preshared
         key, `wireguard/psk/<name>`, in the sops file: `wireguard-<host> add`

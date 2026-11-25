@@ -1,5 +1,5 @@
 # A Raspberry Pi 4 in an Argon One case, at home: the VPN's server.
-{ inputs, lib, ... }:
+{ inputs, ... }:
 {
   imports = [
     inputs.self.nixosModules.default
@@ -27,7 +27,6 @@
     wireguard = {
       port = 1194;
       subnet = "10.117.17.0/24";
-      inherit (lib.importJSON ./wireguard.json) peers;
     };
   };
 

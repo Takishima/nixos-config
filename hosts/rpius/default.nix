@@ -1,5 +1,5 @@
 # A Raspberry Pi 4 in the US: that side's VPN server.
-{ inputs, lib, ... }:
+{ inputs, ... }:
 {
   imports = [
     inputs.self.nixosModules.default
@@ -28,7 +28,6 @@
         "1.1.1.1"
         "8.8.8.8"
       ];
-      inherit (lib.importJSON ./wireguard.json) peers;
     };
   };
 
