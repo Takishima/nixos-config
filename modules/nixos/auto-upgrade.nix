@@ -228,15 +228,15 @@ let
           echo 1 > "$failuresInARow"
         fi
         echo "$current" > "$failedAfterReboot"
-        {
-          echo "$current failed its checks after the reboot. Rolled back to $good."
-          printf '%s\n' "$reason"
-        } > ${report}
 
         # $awaitingReboot stays until the rollback holds, so that a boot
         # after a rollback cut short checks again.
         if nix-env --profile "$profile" --set "$good" && "$good/bin/switch-to-configuration" boot; then
           rm -f "$awaitingReboot" "$bootsWithoutPassing"
+          {
+            echo "$current failed its checks after the reboot. Rolled back to $good."
+            printf '%s\n' "$reason"
+          } > ${report}
           systemctl --no-block reboot
         else
           echo "could not make $good the boot default: switching to it without a reboot"
