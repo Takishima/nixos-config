@@ -223,10 +223,12 @@ let
 
         echo "$current fails its checks: rebooting into $good"
         printf '%s\n' "$reason"
-        if is "$current" "$failedAfterReboot"; then
-          echo $(($(count "$failuresInARow") + 1)) > "$failuresInARow"
-        else
-          echo 1 > "$failuresInARow"
+        if is "$current" "$awaitingReboot"; then
+          if is "$current" "$failedAfterReboot"; then
+            echo $(($(count "$failuresInARow") + 1)) > "$failuresInARow"
+          else
+            echo 1 > "$failuresInARow"
+          fi
         fi
         echo "$current" > "$failedAfterReboot"
 

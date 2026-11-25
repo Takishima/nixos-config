@@ -177,12 +177,14 @@
         same(read("pending"), original)
         machine.succeed(f"rm {state}/pending", f"nix-env --profile {profile} --set {other}")
 
-    with subtest("a rollback that did not hold is tried again, but not forever"):
+    with subtest("a rollback that did not hold is tried again, but not forever, and is no new failure"):
         # `original` is booted and is the system that failed.
         machine.succeed(f"{original}/bin/switch-to-configuration test", f"echo 2 > {state}/returns")
         machine.fail("systemctl restart nixos-upgrade-confirm.service")
         machine.succeed(f"rm {state}/returns")
+        strikes = read("strikes")
         confirm_rolls_back()
+        same(read("strikes"), strikes)
 
     with subtest("the upgrade that replaces a system that failed is recorded"):
         # `original` is booted again, and still the system that failed.
