@@ -46,6 +46,21 @@ let
     };
   };
 
+  withoutPresharedKey = pkgs.nixos {
+    imports = [ self.nixosModules.wireguard ];
+    my = {
+      secrets = fixtureSecrets;
+      wireguard = {
+        enable = true;
+        subnet = "10.6.0.0/24";
+        peers.tablet = {
+          publicKey = phoneKey;
+          address = "10.6.0.3";
+        };
+      };
+    };
+  };
+
   phoneConf = pkgs.writeText "phone.conf" ''
     [Interface]
     PrivateKey = ${keys.peer1.privateKey}
@@ -131,6 +146,9 @@ in
       && !(nodes.fresh.my.autoUpgrade.checks ? wireguard)
       && lib.any (lib.hasInfix "my.wireguard") nodes.fresh.warnings
     ) "without its sops key, my.wireguard must open nothing and say so";
+    assert lib.assertMsg (lib.any (
+      { assertion, message }: !assertion && lib.hasInfix "wireguard/psk/<name>" message
+    ) withoutPresharedKey.config.assertions) "my.wireguard must refuse a client without a preshared key";
     ''
       import json
 
