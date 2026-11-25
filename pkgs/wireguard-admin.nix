@@ -54,6 +54,9 @@ writeShellApplication {
       disable <name>            shuts a client out, and keeps its address and keys
       enable <name>
       remove <name>
+      rotate [-o <file>]        a new key for the server and a new preshared key for
+                                every client; prints the two lines each client has
+                                to change. The clients keep their key pairs
       list
 
     Run it at the root of the repository. It writes $file;
@@ -89,6 +92,12 @@ writeShellApplication {
     has_client() {
       state | jq -e --arg name "$1" '.peers | has($name)' >/dev/null
     }
+    server_key() {
+      local key
+      key=$(state | jq -r '.publicKey // empty')
+      [ -n "$key" ] || die "$file has no server yet: run init, or import"
+      echo "$key"
+    }
     existing_client() {
       [ -n "$1" ] || die "$command takes the client's name"
       has_client "$1" || die "no client $1"
@@ -116,13 +125,19 @@ writeShellApplication {
     }
     write_secrets() {
       [ ''${#pending[@]} -gt 0 ] || return 0
-      local entry psk=""
+      local entry psk="" before
       if [ -n "$sops" ]; then
+        before=$(mktemp)
+        cp "$secrets" "$before"
         for entry in "''${pending[@]}"; do
           # printf is a shell builtin: the secret appears on no command line.
           printf %s "''${entry#*=}" | jq -Rs . |
-            sops set --value-stdin "$secrets" "$(sops_index "''${entry%%=*}")"
+            sops set --value-stdin "$secrets" "$(sops_index "''${entry%%=*}")" || {
+            mv "$before" "$secrets"
+            die "sops could not write wireguard/''${entry%%=*}: $secrets is as it was"
+          }
         done
+        rm "$before"
         return 0
       fi
       echo "Put these in $secrets (sops $secrets), then commit and switch:" >&2
@@ -258,8 +273,7 @@ writeShellApplication {
           endpoint=$(sops decrypt --extract '["wireguard"]["endpoint"]' "$secrets" 2>/dev/null) ||
             die "say what clients connect to: --endpoint <public name>, or wireguard/endpoint in $secrets (needs SOPS_AGE_KEY)"
         fi
-        serverKey=$(state | jq -r '.publicKey // empty')
-        [ -n "$serverKey" ] || die "$file has no server yet: run init, or import"
+        serverKey=$(server_key)
         if has_client "$name"; then die "there is a client $name already"; fi
 
         address=$(state | jq -r --arg prefix "$prefix" \
@@ -316,6 +330,41 @@ writeShellApplication {
         existing_client "''${1:-}"
         drop_secret "psk/$1"
         state | jq --arg name "$1" 'del(.peers[$name])' | save
+        ;;
+
+      rotate)
+        out=""
+        if [ "''${1:-}" = -o ]; then
+          out=''${2:-}
+          [ -n "$out" ] || die "-o takes a file"
+          shift 2
+        fi
+        [ $# -eq 0 ] || die "unknown option $1"
+        server_key >/dev/null
+        names=$(state | jq -r '.peers | keys[]')
+        [ -z "$out" ] || install -m 600 /dev/null "$out"
+
+        private=$(wg genkey)
+        serverKey=$(wg pubkey <<<"$private")
+        secret private_key "$private"
+        lines=""
+        for name in $names; do
+          psk=$(wg genpsk)
+          secret "psk/$name" "$psk"
+          printf -v lines '%s%s:\nPublicKey = %s\nPresharedKey = %s\n\n' "$lines" "$name" "$serverKey" "$psk"
+        done
+        write_secrets
+        state | jq --arg key "$serverKey" '.publicKey = $key' | save
+
+        echo "Commit $file and $secrets, and switch the server." >&2
+        [ -n "$lines" ] || exit 0
+        if [ -n "$out" ]; then
+          printf %s "$lines" >"$out"
+          echo "The lines each client has to change are in $out: delete it once the clients have them." >&2
+        else
+          printf %s "$lines" >&2
+        fi
+        echo "Once the server has switched, a client connects only with its two new lines in [Peer]." >&2
         ;;
 
       list)

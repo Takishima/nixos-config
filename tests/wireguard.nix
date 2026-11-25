@@ -253,6 +253,38 @@ in
           assert status != 0, out
           server.succeed("test \"$(jq '.peers | has(\"camera\")' /root/repo/hosts/testpi/wireguard.json)\" = false")
 
+      with subtest("rotate replaces the server's key and every client's preshared key, and changes no client"):
+          repo_json = "/root/repo/hosts/testpi/wireguard.json"
+          clients = server.succeed(f"jq -c .peers {repo_json}")
+          old_key = server.succeed(f"jq -r .publicKey {repo_json}").strip()
+          server.fail(f"{as_host} wireguard-testpi --sops rotate -o")
+          untouched = server.succeed(f"jq -r .publicKey {repo_json}").strip()
+          assert untouched == old_key, untouched
+          server.succeed(f"{as_host} wireguard-testpi --sops rotate -o /root/rotated.txt")
+
+          new_key = server.succeed(f"jq -r .publicKey {repo_json}").strip()
+          assert new_key != old_key and len(new_key) == 44, new_key
+          kept = server.succeed(f"jq -c .peers {repo_json}")
+          assert kept == clients, kept
+          from_secret = server.succeed(
+              f"""{as_host} sops decrypt --extract '["wireguard"]["private_key"]' secrets/testpi.yaml | wg pubkey"""
+          ).strip()
+          assert from_secret == new_key, from_secret
+
+          with_psk = server.succeed(
+              f"""{as_host} sops decrypt --extract '["wireguard"]["psk"]' --output-type json secrets/testpi.yaml | jq -c keys"""
+          )
+          names = server.succeed(f"jq -c '.peers | keys' {repo_json}")
+          assert with_psk == names, with_psk
+          stored = server.succeed(
+              f"""{as_host} sops decrypt --extract '["wireguard"]["psk"]["phone"]' secrets/testpi.yaml"""
+          ).strip()
+          assert stored != "${keys.presharedKey}", stored
+          phone = server.succeed("grep -A2 '^phone:$' /root/rotated.txt")
+          assert f"PublicKey = {new_key}\nPresharedKey = {stored}" in phone, phone
+          mode = server.succeed("stat -c %a /root/rotated.txt").strip()
+          assert mode == "600", mode
+
       with subtest("a disabled client stays in the file, shut out, until it is enabled"):
           server.succeed(
               "cd /root/repo && wireguard-testpi disable tablet",
@@ -262,6 +294,11 @@ in
               "test \"$(jq '.peers.tablet | has(\"enable\")' /root/repo/hosts/testpi/wireguard.json)\" = false",
           )
           server.fail("cd /root/repo && wireguard-testpi disable nobody")
+
+      with subtest("rotate refuses a file that has no server"):
+          server.succeed("mkdir -p /root/none/hosts/testpi")
+          status, out = server.execute("cd /root/none && wireguard-testpi rotate 2>&1")
+          assert status != 0 and "no server yet" in out, out
 
       with subtest("a removed client is gone, a new server starts empty"):
           server.succeed(

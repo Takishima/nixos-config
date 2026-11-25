@@ -215,7 +215,7 @@ and hardened for it, upgrading itself from this repository every day.
 | To | Read |
 | --- | --- |
 | Put NixOS on a Pi, update it, recover one that does not boot, or add another | [docs/raspberry-pi.md](docs/raspberry-pi.md) |
-| Add, list, shut out or remove a VPN client | [docs/vpn-clients.md](docs/vpn-clients.md) |
+| Add, list, shut out or remove a VPN client, or give the server new keys | [docs/vpn-clients.md](docs/vpn-clients.md) |
 | Know how a VPN server is hardened, and what it trusts | [docs/server-hardening.md](docs/server-hardening.md) |
 | Know when a server rolls an upgrade back, and what its alerts mean | [docs/automatic-upgrades.md](docs/automatic-upgrades.md) |
 
