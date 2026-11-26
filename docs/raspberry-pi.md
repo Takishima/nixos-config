@@ -198,7 +198,7 @@ fails, or when the Pi goes silent.
 
 ## If the Pi does not boot
 
-A Pi with `my.trialBoot`, such as `rpius`, goes back by itself to the system
+A Pi with `my.trialBoot`, as both are, goes back by itself to the system
 before when a new kernel does not come up: see
 [About the automatic upgrades](automatic-upgrades.md). It has no boot menu. If
 it does not boot at all, write the card again, the second way below.

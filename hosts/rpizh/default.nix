@@ -23,6 +23,8 @@
 
     argonOne.enable = true;
 
+    trialBoot.enable = true;
+
     homebridge = {
       enable = true;
       plugins = [
