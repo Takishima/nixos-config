@@ -69,6 +69,16 @@ let
           && [ $(($(date +%s) - $(stat -c %Y "$failedAfterReboot"))) -lt ${toString (skipDays * 86400)} ]
       }
 
+      # Counts against the system $1 that it failed after a reboot.
+      strike() {
+        if is "$1" "$failedAfterReboot"; then
+          echo $(($(count "$failuresInARow") + 1)) > "$failuresInARow"
+        else
+          echo 1 > "$failuresInARow"
+        fi
+        echo "$1" > "$failedAfterReboot"
+      }
+
       remember() {
         echo "$current" > "$systemBefore"
         ${postSwitch.run} sample "$failingBefore"
@@ -181,14 +191,7 @@ let
 
         echo "$current fails its checks: rebooting into $good"
         printf '%s\n' "$reason"
-        if is "$current" "$awaitingReboot"; then
-          if is "$current" "$failedAfterReboot"; then
-            echo $(($(count "$failuresInARow") + 1)) > "$failuresInARow"
-          else
-            echo 1 > "$failuresInARow"
-          fi
-        fi
-        echo "$current" > "$failedAfterReboot"
+        if is "$current" "$awaitingReboot"; then strike "$current"; fi
 
         # $awaitingReboot stays until the rollback holds, so that a boot
         # after a rollback cut short checks again.
