@@ -170,10 +170,16 @@ change.
    comment rules above.
 6. `git log --format=%s origin/main..HEAD | awk 'length > 72'` prints nothing.
 
-`nix flake check` runs all of the above and more. In a Claude Code cloud
-session, such as one started from the iPhone or iPad app, run it without asking:
-nothing else is waiting on that machine. On the user's own machine, leave it to
-CI unless the user asks.
+`nix flake check` runs all of the above and more. Leave it to CI unless the
+user asks.
+
+## Rules for one kind of session
+
+A rule that holds only in a Claude Code cloud session, such as one started from
+the iPhone or iPad app, goes in
+[.claude/cloud-session.md](.claude/cloud-session.md), not here. The
+`SessionStart` hook in `.claude/settings.json` loads that file in those sessions
+only.
 
 ## Scope and precedence
 
