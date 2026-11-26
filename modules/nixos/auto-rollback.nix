@@ -37,6 +37,7 @@ let
       # A garbage collector root, so the system to roll back to stays.
       goodLink=/nix/var/nix/gcroots/nixos-upgrade-good
       awaitingReboot=$state/pending
+      rebootedFor=$state/rebooted
       bootsWithoutPassing=$state/boots
       failedAfterReboot=$state/bad
       failuresInARow=$state/strikes
@@ -145,13 +146,31 @@ let
           echo "could not record $new: it will not be checked after the reboot"
           exit 1
         fi
+        if [ -e /run/systemd/shutdown/scheduled ]; then
+          echo "$new" > "$rebootedFor"
+        else
+          rm -f "$rebootedFor"
+        fi
       }
 
       confirm() {
-        local boots good reason
+        local awaited boots good reason
         # A system switched to by hand is not judged.
         if [ "$(readlink -f /run/booted-system)" != "$current" ]; then exit 0; fi
         if ! is "$current" "$failedAfterReboot"; then rm -f "$bootsAfterRollback"; fi
+
+        awaited=""
+        if [ -e "$awaitingReboot" ]; then awaited=$(cat "$awaitingReboot"); fi
+        # A boot loader that tries a system once started the one before instead.
+        if [ -n "$awaited" ] && [ "$awaited" != "$current" ] && is "$awaited" "$rebootedFor"; then
+          echo "$awaited did not come up after its reboot: this is $current again"
+          strike "$awaited"
+          rm -f "$awaitingReboot" "$bootsWithoutPassing" "$rebootedFor"
+          if ! { nix-env --profile "$profile" --set "$current" && activate "$current" boot; }; then
+            echo "could not make $current the boot default again"
+          fi
+          exit 1
+        fi
 
         if is "$current" "$awaitingReboot"; then
           boots=$(($(count "$bootsWithoutPassing") + 1))
