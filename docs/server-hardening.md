@@ -36,6 +36,13 @@
   get through a reboot in 10 minutes. A kernel panic restarts it, and a unit
   that fails at boot does not hold it at an emergency prompt.
 - Wi-Fi is off and its driver is not loaded.
+- On `rpizh`, Homebridge (`my.homebridge`) answers on every network but the
+  VPN: the bridge, its web interface and mDNS. The router forwards none of
+  their ports, which leaves the home network. It runs as a user of its own
+  that cannot become root, and its web interface has no terminal. Its plugins
+  are the ones the host lists; one its administrator adds in the web interface
+  runs until the next start. They reach the home network, the internet and the
+  journal, not the sops secrets.
 - It upgrades itself every morning, and goes back when an upgrade leaves it
   out of reach: see [About the automatic upgrades](automatic-upgrades.md).
 

@@ -9,6 +9,7 @@
     ./fan-control.nix
     ./fonts.nix
     ./hardened.nix
+    ./homebridge.nix
     ./locale.nix
     ./logitech.nix
     ./nix.nix

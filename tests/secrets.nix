@@ -7,6 +7,8 @@
 #   wireguard/private_key, wireguard/psk/phone: nixpkgs' test keys
 #   wireguard/endpoint: vpn.example.org (for wireguard.nix)
 #   healthchecks/url: http://monitor:8000/ping/snakeoil (for healthchecks-io.nix)
+#   homebridge/password_hash: homebridge-password-hash of "open-sesame-bridge" (for homebridge.nix)
+#   homebridge/pin: 482-91-537 (for homebridge.nix)
 # and nothing for bob.
 {
   self,
