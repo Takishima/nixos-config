@@ -17,7 +17,7 @@ Home-manager runs as a NixOS module, so one switch updates system and home.
 | `hosts/<host>/` | One machine: disk, hardware, which features are on. The flake takes every directory here |
 | `modules/nixos/` | One module per system feature, each behind a `my.*` option |
 | `modules/home/` | One home-manager module per program or domain, also under `my.*` |
-| `profiles/` | What a kind of machine needs: `raspberry-pi`, with `my.argonOne` for the fan of an Argon One case |
+| `profiles/` | What a kind of machine needs: `raspberry-pi`, with `my.argonOne` for the fan of an Argon One case, and `my.trialBoot` to boot without U-Boot, a new kernel once as a trial |
 | `home/damien/` | Damien's settings: `base.nix` for all, then `minimal.nix` for a server, or `default.nix` where he works and `homelinux.nix` on top. `server-account.nix` is his account on a server |
 | `overlays/`, `pkgs/` | Overlays and the packages they add |
 | `docs/` | Longer guides: provisioning a Raspberry Pi, the VPN's clients, how a VPN server is hardened and upgrades itself |

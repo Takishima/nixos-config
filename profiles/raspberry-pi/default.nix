@@ -5,10 +5,14 @@
   modulesPath,
   ...
 }:
+let
+  uBoot = !config.my.trialBoot.enable;
+in
 {
   imports = [
     (modulesPath + "/installer/sd-card/sd-image.nix")
     ./argon-one.nix
+    ./trial-boot.nix
   ];
 
   config = {
@@ -29,7 +33,7 @@
     sdImage = {
       # Room for the vendor device trees and overlays; the default is 30 MiB.
       firmwareSize = 256;
-      populateRootCommands = ''
+      populateRootCommands = lib.mkIf uBoot ''
         mkdir -p ./files/boot
         ${config.boot.loader.generic-extlinux-compatible.populateCmd} -c ${config.system.build.toplevel} -d ./files/boot
       '';
@@ -45,8 +49,8 @@
       enableAllHardware = lib.mkForce false;
       raspberry-pi.firmware = {
         # Keep /boot/firmware in step with the system on every switch.
-        enable = true;
-        uboot.enable = true;
+        enable = uBoot;
+        uboot.enable = uBoot;
       };
     };
 
