@@ -1,4 +1,4 @@
-# The checks other modules name for the system an upgrade leaves.
+# Runs the checks other modules name after a switch, and reports those that fail.
 {
   config,
   lib,
@@ -7,7 +7,13 @@
 }:
 let
   cfg = config.my.postSwitch;
+  inherit (config.my.alerts.healthchecksIo) ping;
+  unit = "post-switch-checks.service";
   failingBefore = "/run/post-switch-checks-failing-before";
+  reportFailure = lib.optionalString (
+    ping != null
+  ) "--property=OnFailure=healthchecks-fail@${unit}.service";
+
   checks = pkgs.writeShellApplication {
     name = "post-switch-checks";
     runtimeInputs = [
@@ -79,8 +85,48 @@ let
     '';
   };
 
+  onSwitch = pkgs.writeShellApplication {
+    name = "post-switch-checks-on-switch";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.util-linux
+      config.systemd.package
+    ];
+    text = ''
+      # A pre-switch check: the switch stops units before anything else can run.
+      before() {
+        local action=$1 judge
+        case $action in
+          switch | test) ;;
+          *) return ;;
+        esac
+        # An upgrade judges its own switch, and the checks under way this one too.
+        for judge in nixos-upgrade.service ${unit}; do
+          case $(systemctl show --property=ActiveState --value "$judge") in
+            activating | deactivating) return ;;
+          esac
+        done
+        ${cfg.remember}
+        echo "${unit} checks the new system once the switch ends"
+        # Transient: systemd still has the units of the system before.
+        systemd-run --quiet --no-block --collect --unit=${unit} \
+          --property=Type=oneshot --property=TimeoutStartSec=${toString cfg.verifyTimeoutSeconds} \
+          --property=Before=nixos-upgrade.service ${reportFailure} "$0" after
+      }
+
+      after() {
+        # The switch holds this lock until it ends.
+        flock /run/nixos/switch-to-configuration.lock true
+        exec ${cfg.verify}
+      }
+
+      "$@"
+    '';
+  };
 in
 {
+  imports = [ ./alerts/healthchecks-io.nix ];
+
   options.my.postSwitch = {
     checks = lib.mkOption {
       type = lib.types.attrsOf lib.types.str;
@@ -89,13 +135,15 @@ in
         sshd = "systemctl is-active --quiet sshd.service";
       };
       description = ''
-        Named shell commands that must all succeed after an upgrade of
-        `my.autoUpgrade`. Modules add the checks of what they turn on. Each
-        command may take up to a minute, and finds coreutils, grep, iproute2,
-        systemd and Nix on its `PATH`. If one keeps failing for
-        `retrySeconds`, the upgrade fails; with `my.autoRollback`, the machine
-        also goes back to the system before. A check that already fails
-        before the upgrade, twice 15 seconds apart, does not count.
+        Named shell commands that must all succeed after a `nixos-rebuild
+        switch` or `test`, and after an upgrade of `my.autoUpgrade`. Modules
+        add the checks of what they turn on. Each command may take up to a
+        minute, and finds coreutils, grep, iproute2, systemd and Nix on its
+        `PATH`. If one keeps failing for `retrySeconds`,
+        `post-switch-checks.service` fails, and `my.alerts.healthchecksIo`
+        reports it; with `my.autoRollback`, the machine also goes back to the
+        system before. A check that already fails before the switch, twice 15
+        seconds apart, does not count.
       '';
     };
 
@@ -147,9 +195,13 @@ in
       type = lib.types.ints.unsigned;
       internal = true;
       readOnly = true;
-      # Besides the checks: a rollback, which is another switch.
+      # Besides the checks: the switch they wait for, or a rollback.
       default = cfg.settleSeconds + cfg.retrySeconds + 1800;
       description = "For other modules: how long `verify` may take.";
     };
+  };
+
+  config = lib.mkIf (cfg.checks != { }) {
+    system.preSwitchChecks.post-switch-checks = ''${lib.getExe onSwitch} before "$2"'';
   };
 }

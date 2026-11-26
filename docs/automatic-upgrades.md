@@ -38,6 +38,15 @@ upgrade again the next day. After a second failure in a row it leaves the
 upgrade alone for a week, or until `main` gives a different system. Otherwise a
 bad kernel would reboot the server twice every morning.
 
+The server judges a `nixos-rebuild switch` or `test` run by hand the same way.
+The checks start when the switch ends, in `post-switch-checks.service`, and a
+system that fails them is switched back. To keep a system that breaks a check
+on purpose, run the command with `NIXOS_NO_CHECK=1` in front.
+
+A machine without `my.autoRollback`, such as `homelinux`, runs the checks of
+its own modules after a switch, and keeps the system: a failure is in the
+journal of `post-switch-checks.service`.
+
 ## What the checks do not catch
 
 - A kernel that fails before any service starts. The watchdog resets the Pi,
@@ -57,7 +66,7 @@ With `healthchecks/url` in its sops file, a server pings a healthchecks.io check
 | The check gets | When |
 | --- | --- |
 | A ping | An upgrade run ended well, even with nothing to upgrade |
-| A failure, with the failed checks | An upgrade failed or was rolled back, or a check fails on a morning with nothing to upgrade |
+| A failure, with the failed checks | An upgrade or a switch by hand failed or was rolled back, or a check fails on a morning with nothing to upgrade |
 | Nothing, and raises the alert itself | The server is off, cut off, or does not boot |
 
 The server runs its checks every morning, upgrade or not. A VPN that stops

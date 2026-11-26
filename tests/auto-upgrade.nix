@@ -24,6 +24,7 @@
           recorded = "test ! -e /run/watch || cat /var/lib/nixos-upgrade/pending > /run/seen";
           failsOnce = "if [ -e /run/fail-once ]; then rm /run/fail-once; false; fi";
           failsLater = "if [ -e /run/fail-later ]; then if [ -e /run/sampled ]; then false; else touch /run/sampled; fi; fi";
+          works = "test ! -e /etc/broken";
         };
         settleSeconds = 1;
         retrySeconds = 0;
@@ -37,7 +38,10 @@
       nixos-upgrade-confirm.wantedBy = lib.mkForce [ ];
     };
 
-    specialisation.next.configuration.environment.etc."next".text = "next";
+    specialisation = {
+      next.configuration.environment.etc."next".text = "next";
+      broken.configuration.environment.etc."broken".text = "broken";
+    };
   };
 
   testScript = ''
@@ -71,6 +75,18 @@
     def fails(command):
         ok, log = upgrade(command)
         assert not ok, log
+
+    def switch_unchecked(system):
+        """Switches as the test's own setup, which the machine is not to judge."""
+        machine.succeed(f"NIXOS_NO_CHECK=1 {system}/bin/switch-to-configuration test")
+
+    def switch_by_hand(system):
+        """Switches as `nixos-rebuild test` does: the log of the checks that follow."""
+        machine.succeed(f"{system}/bin/switch-to-configuration test")
+        machine.wait_until_succeeds(
+            "systemctl show -p ActiveState --value post-switch-checks.service | grep -qxE 'inactive|failed'"
+        )
+        return machine.succeed("journalctl -u post-switch-checks.service -n 30 --no-pager")
 
     def same(actual, wanted):
         assert actual == wanted, f"{actual}, not {wanted}"
@@ -108,12 +124,32 @@
         same(link(profile), original)
         machine.fail("test -e /etc/next")
 
+    with subtest("the switch of an upgrade is left to the upgrade's own checks"):
+        checks = machine.succeed("journalctl -u post-switch-checks.service --quiet --no-pager")
+        assert checks == "", checks
+
+    with subtest("a switch by hand that passes its checks is kept"):
+        machine.succeed("touch /run/healthy")
+        checks = switch_by_hand(f"{original}/specialisation/next")
+        machine.succeed("test -e /etc/next")
+        same(link(good), current())
+        assert "rolling back" not in checks, checks
+        switch_unchecked(original)
+
+    with subtest("a switch by hand that fails its checks is rolled back"):
+        checks = switch_by_hand(f"{original}/specialisation/broken")
+        assert "check failed: works" in checks and "rolled back" in checks, checks
+        same(current(), original)
+        same(link(profile), original)
+        machine.fail("test -e /etc/broken")
+
     with subtest("a system switched to is recorded for the next boot while it is checked"):
         machine.succeed("touch /run/healthy")
         succeeds(f"touch /run/watch; {switch_to_next}")
         same(machine.succeed("cat /run/seen").strip(), current())
         machine.fail(f"test -e {state}/pending")
-        machine.succeed("rm /run/watch", f"{original}/bin/switch-to-configuration test")
+        machine.succeed("rm /run/watch")
+        switch_unchecked(original)
 
     with subtest("a check that already failed before is not held against it"):
         machine.succeed("touch /run/healthy /run/other-broken")
@@ -128,11 +164,11 @@
     install_original = f"nix-env --profile {profile} --set {original}"
 
     def run_previous():
-        machine.succeed(f"{other}/bin/switch-to-configuration test")
+        switch_unchecked(other)
 
     def booted_upgrade():
         """As after the reboot of an upgrade from `other` to `original`."""
-        machine.succeed(f"{original}/bin/switch-to-configuration test")
+        switch_unchecked(original)
         machine.succeed(f"ln -sfn {other} {good}", f"echo {original} > {state}/pending")
 
     def confirm_rolls_back():
@@ -187,7 +223,8 @@
 
     with subtest("a rollback that did not hold is tried again, but not forever, and is no new failure"):
         # `original` is booted and is the system that failed.
-        machine.succeed(f"{original}/bin/switch-to-configuration test", f"echo 2 > {state}/returns")
+        switch_unchecked(original)
+        machine.succeed(f"echo 2 > {state}/returns")
         machine.fail("systemctl restart nixos-upgrade-confirm.service")
         machine.succeed(f"rm {state}/returns")
         strikes = read("strikes")

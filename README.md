@@ -51,7 +51,7 @@ A feature with a system part and a home part uses one option name for both
 | `my.wireguard` | A WireGuard server: port, subnet and clients declared, keys from sops |
 | `my.homebridge` | Homebridge: a HomeKit bridge with the plugins of `my.homebridge.plugins`, and its web interface on port 8581, for every network but the VPN's clients, without privileges |
 | `my.hardened` | For a server on the internet: no sudo, root's password from sops, fail2ban, stricter kernel and firewall |
-| `my.postSwitch` | The checks a system has to pass after an upgrade. Each module adds those of what it turns on |
+| `my.postSwitch` | The checks a system has to pass after a switch or an upgrade. Each module adds those of what it turns on; a failure is reported |
 | `my.autoRollback` | For a server: goes back to the system before when `my.postSwitch.checks` fail, also after a reboot |
 | `my.autoUpgrade` | Daily upgrade to this flake's system, judged by `my.postSwitch.checks` |
 | `my.alerts.healthchecksIo` | Pings a healthchecks.io check when a unit succeeds, and reports one that fails |

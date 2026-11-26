@@ -1,5 +1,5 @@
-# Goes back to the system before when an upgrade fails my.postSwitch.checks,
-# with a reboot if the upgrade rebooted.
+# Goes back to the system before when a switch or an upgrade fails
+# my.postSwitch.checks, with a reboot if the upgrade rebooted.
 {
   config,
   lib,
@@ -50,6 +50,11 @@ let
         failures=$(${postSwitch.run} healthy "$1")
       }
 
+      # NIXOS_NO_CHECK: nothing holds a rollback up, or judges it in its turn.
+      activate() {
+        NIXOS_NO_CHECK=1 "$1/bin/switch-to-configuration" "$2"
+      }
+
       is() {
         [ -e "$2" ] && [ "$1" = "$(cat "$2")" ]
       }
@@ -73,7 +78,7 @@ let
         fi
       }
 
-      # Runs when the upgrade ends, whether it failed or not.
+      # Runs when a switch or an upgrade ends, whether it failed or not.
       verify() {
         local before good new
         before=$(cat "$systemBefore") || exit 0
@@ -93,10 +98,10 @@ let
             echo "could not reset the system profile"
           fi
           # The running system matters more than the boot loader.
-          if "$good/bin/switch-to-configuration" switch; then
+          if activate "$good" switch; then
             rm -f "$awaitingReboot"
           else
-            "$good/bin/switch-to-configuration" test
+            activate "$good" test
           fi
           echo "rolled back to $good:"
           printf '%s\n' "$failures"
@@ -120,7 +125,7 @@ let
         if skipped "$new"; then
           echo "$new failed its checks after a reboot, twice: staying on $good"
           if ! shutdown -c; then echo "no reboot was scheduled"; fi
-          if ! { nix-env --profile "$profile" --set "$good" && "$good/bin/switch-to-configuration" boot; }; then
+          if ! { nix-env --profile "$profile" --set "$good" && activate "$good" boot; }; then
             echo "could not make $good the boot default again"
           fi
           exit 1
@@ -187,7 +192,7 @@ let
 
         # $awaitingReboot stays until the rollback holds, so that a boot
         # after a rollback cut short checks again.
-        if nix-env --profile "$profile" --set "$good" && "$good/bin/switch-to-configuration" boot; then
+        if nix-env --profile "$profile" --set "$good" && activate "$good" boot; then
           rm -f "$awaitingReboot" "$bootsWithoutPassing"
           {
             echo "$current failed its checks after the reboot. Rolled back to $good."
@@ -196,7 +201,7 @@ let
           systemctl --no-block reboot
         else
           echo "could not make $good the boot default: switching to it without a reboot"
-          "$good/bin/switch-to-configuration" test
+          activate "$good" test
         fi
         exit 1
       }
@@ -213,10 +218,11 @@ in
   ];
 
   options.my.autoRollback.enable = lib.mkEnableOption ''
-    going back to the system before when an upgrade of `my.autoUpgrade`
-    fails `my.postSwitch.checks`. An upgrade that rebooted for a new kernel
-    is checked after the reboot, and undone with another.
-    docs/automatic-upgrades.md says when an upgrade is tried again'';
+    going back to the system before when a `nixos-rebuild switch` or `test`,
+    or an upgrade of `my.autoUpgrade`, fails `my.postSwitch.checks`. An
+    upgrade that rebooted for a new kernel is checked after the reboot, and
+    undone with another. docs/automatic-upgrades.md says when an upgrade is
+    tried again'';
 
   config = lib.mkIf cfg.enable {
     assertions = lib.optional (autoUpgrade.enable && autoUpgrade.allowReboot) {

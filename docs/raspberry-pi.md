@@ -148,12 +148,13 @@ if the kernel changed. The hours are in the Pi's own time zone,
 
 The repository has to stay public: the Pi fetches it without credentials.
 
-If an upgrade fails one of `my.postSwitch.checks`, the Pi goes back to the
-system it ran before: see [About the automatic upgrades](automatic-upgrades.md).
-To see which check failed, on the Pi:
+If an upgrade, or a switch you run yourself, fails one of
+`my.postSwitch.checks`, the Pi goes back to the system it ran before: see
+[About the automatic upgrades](automatic-upgrades.md). To see which check
+failed, on the Pi:
 
 ```sh
-journalctl -u nixos-upgrade -u nixos-upgrade-confirm
+journalctl -u nixos-upgrade -u nixos-upgrade-confirm -u post-switch-checks
 ```
 
 To switch at once, wait for CI's run on `main` to move `rpi`. Then, on the Pi:
