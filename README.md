@@ -23,7 +23,7 @@ Home-manager runs as a NixOS module, so one switch updates system and home.
 | `docs/` | Longer guides: provisioning a Raspberry Pi, the VPN's clients, how a VPN server is hardened and upgrades itself |
 | `skills/` | AI skills, as `<area>/<name>/{meta.nix, body.md, references/}` |
 | `.claude/skills/` | The skills an agent uses when working on this repository: pointers into `skills/` |
-| `.claude/settings.json`, `.claude/cloud-session.md` | The rules an agent gets only in a Claude Code cloud session, and the hook that loads them |
+| `.claude/settings.json`, `.claude/cloud-session.md`, `.claude/hooks/` | What an agent gets only in a Claude Code cloud session: its rules, and the flake inputs fetched over git |
 | `secrets/` | sops files, encrypted for the key in `.sops.yaml` |
 
 A feature with a system part and a home part uses one option name for both
