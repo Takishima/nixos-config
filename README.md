@@ -99,11 +99,13 @@ them as `default`. A module brings everything it needs: no other imports, no
 | `packages.<system>.wireguard-<host>` | Manages the clients of a host with `my.wireguard` |
 | `packages.<system>.provision-<host>` | Writes a Pi's SD card, with its host key |
 | `packages.aarch64-linux.<host>-sd-image` | A Pi's SD image |
-| `packages.<system>.sops-host`, `packages.<system>.ncro` | The packages of the overlays below |
+| `packages.<system>.sops-host`, `packages.<system>.ncro`, `packages.<system>.homebridge-miot`, `packages.<system>.homebridge-synology` | The packages of the overlays below |
+| `packages.<system>.homebridge-password-hash` | Hashes a password for `homebridge/password_hash` |
 | `checks.<system>.toplevel-<host>` | Builds a host's system, under the host's own `<system>` |
 | `checks.x86_64-linux.formatting`, `checks.x86_64-linux.statix` | `nix fmt` changes nothing; statix finds nothing |
 | `checks.x86_64-linux.vm-<name>` | Runs the VM test `tests/<name>.nix` |
 | `overlays.packages` | `sops-host` |
+| `overlays.homebridge` | The Homebridge plugins `homebridge-miot` and `homebridge-synology`, for `my.homebridge.plugins`, and `homebridge-password-hash` |
 | `overlays.ncro` | `ncro`, built against your nixpkgs |
 | `overlays.claude-code` | `claude-code` from llm-agents.nix, replacing nixpkgs' |
 | `overlays.default` | All of the above |

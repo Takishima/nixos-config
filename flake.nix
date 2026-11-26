@@ -148,7 +148,13 @@
       packages = forAllSystems (
         system:
         {
-          inherit (pkgsFor.${system}) sops-host ncro;
+          inherit (pkgsFor.${system})
+            sops-host
+            ncro
+            homebridge-miot
+            homebridge-password-hash
+            homebridge-synology
+            ;
         }
         // lib.genAttrs' wireguardServers (
           host:
