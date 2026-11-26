@@ -6,6 +6,11 @@
           {
             "type": "command",
             "command": "if [ \"${CLAUDE_CODE_REMOTE:-}\" = true ]; then cat \"$CLAUDE_PROJECT_DIR/.claude/cloud-session.md\"; fi"
+          },
+          {
+            "type": "command",
+            "command": "if [ \"${CLAUDE_CODE_REMOTE:-}\" = true ]; then \"$CLAUDE_PROJECT_DIR/.claude/hooks/fetch-flake-inputs.sh\"; fi",
+            "async": true
           }
         ]
       }
