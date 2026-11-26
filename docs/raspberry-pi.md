@@ -198,8 +198,13 @@ fails, or when the Pi goes silent.
 
 ## If the Pi does not boot
 
-The watchdog resets a Pi that hangs, which then boots the same system again.
-First get the Pi up in one of two ways:
+A Pi with `my.trialBoot`, such as `rpius`, goes back by itself to the system
+before when a new kernel does not come up: see
+[About the automatic upgrades](automatic-upgrades.md). It has no boot menu. If
+it does not boot at all, write the card again, the second way below.
+
+Without `my.trialBoot`, the watchdog resets a Pi that hangs, which then boots
+the same system again. First get the Pi up in one of two ways:
 
 - Connect a screen and a keyboard. U-Boot shows its menu for one second: choose
   an older generation there.
@@ -230,6 +235,7 @@ VPN server `wireguard-<name>`. For another VPN server:
    | IPv6 and DNS for the VPN's clients | `my.wireguard.subnet6`, `my.wireguard.dns` |
    | The time zone and the locales | `my.locale` |
    | The fan, if the Pi is in an Argon One case | `my.argonOne.enable` |
+   | A new kernel booted once as a trial, without U-Boot | `my.trialBoot.enable` |
 
    Keep the import of `home/damien/server-account.nix` unless you work on the
    machine. For a Pi 5, import `nixosModules.raspberry-pi-5`. It evaluates, but
