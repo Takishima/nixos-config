@@ -1,4 +1,4 @@
-# my.alerts.healthchecksIo, and what my.autoUpgrade reports through it.
+# my.alerts.healthchecksIo, and what my.autoRollback reports through it.
 # `monitor` stands in for healthchecks.io, at the URL of the fixture's secret.
 {
   self,
@@ -42,7 +42,7 @@ in
     machine = {
       imports = [
         self.nixosModules.alerts
-        self.nixosModules.auto-upgrade
+        self.nixosModules.auto-rollback
       ];
 
       my = {
@@ -52,10 +52,7 @@ in
           units = [ "job" ];
           heartbeat = [ "job" ];
         };
-        autoUpgrade = {
-          enable = true;
-          checks.healthy = "true";
-        };
+        autoRollback.enable = true;
       };
 
       systemd.services.job = {

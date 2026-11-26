@@ -25,7 +25,7 @@ module in `modules/home/`.
   reaches the Pis the next morning, and can lock the owner out of a machine on
   another continent. Say so in your summary, and check `tests/hardened.nix`,
   `tests/ssh-server.nix` and `tests/wireguard.nix` still cover the change.
-- A new way into a server adds its check to `my.autoUpgrade.checks`.
+- A new way into a server adds its check to `my.postSwitch.checks`.
 
 ## A new host
 

@@ -147,7 +147,7 @@ in
       && !nodes.fresh.networking.firewall.filterForward
       && !nodes.fresh.networking.nat.enable
       && nodes.fresh.networking.wireguard.interfaces == { }
-      && !(nodes.fresh.my.autoUpgrade.checks ? wireguard)
+      && !(nodes.fresh.my.postSwitch.checks ? wireguard)
       && lib.any (lib.hasInfix "my.wireguard") nodes.fresh.warnings
     ) "without its sops key, my.wireguard must open nothing and say so";
     assert lib.assertMsg (lib.any

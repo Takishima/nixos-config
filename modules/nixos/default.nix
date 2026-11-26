@@ -2,6 +2,7 @@
   imports = [
     ./alerts
     ./audio.nix
+    ./auto-rollback.nix
     ./auto-upgrade.nix
     ./bluetooth.nix
     ./desktop-niri.nix
@@ -16,6 +17,7 @@
     ./nix-cache-proxy.nix
     ./nix-nixbuild.nix
     ./onepassword.nix
+    ./post-switch.nix
     ./printing.nix
     ./secrets.nix
     ./smartcard.nix
