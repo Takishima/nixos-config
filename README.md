@@ -48,6 +48,7 @@ A feature with a system part and a home part uses one option name for both
 | `my.duckdns` | DuckDNS updates, token and names from sops |
 | `my.wifi` | NetworkManager Wi-Fi profiles, passwords from sops |
 | `my.wireguard` | A WireGuard server: port, subnet and clients declared, keys from sops |
+| `my.homebridge` | Homebridge: a HomeKit bridge with the plugins of `my.homebridge.plugins`, and its web interface on port 8581, for every network but the VPN's clients, without privileges |
 | `my.hardened` | For a server on the internet: no sudo, root's password from sops, fail2ban, stricter kernel and firewall |
 | `my.autoUpgrade` | Daily upgrade to this flake's system, rolled back if its checks fail, also after a reboot |
 | `my.alerts.healthchecksIo` | Pings a healthchecks.io check when a unit succeeds, and reports one that fails |
@@ -157,6 +158,8 @@ The system builds without the file. Each key turns its feature on:
 | `password_hash/root` | Root's password on a `my.hardened` host, the only way to root there | That host does not build |
 | `wifi/<name>` | Password of the network `my.wifi.networks.<name>` | No profile for that network |
 | `duckdns/token`, `duckdns/domains` | DuckDNS account token; its names, one per line | No DuckDNS updates |
+| `homebridge/password_hash` | Password of `admin`, the only user of Homebridge's web interface, hashed by `nix run .#homebridge-password-hash` | Whoever opens the web interface first sets the administrator |
+| `homebridge/pin` | Code to pair Homebridge's bridge with in Apple Home, as `NNN-NN-NNN` | Homebridge's public code, `031-45-154` |
 | `healthchecks/url` | Ping URL of the host's healthchecks.io check | Nothing is reported |
 | `wireguard/private_key` | The VPN server's private key | The VPN is not started |
 | `wireguard/psk/<client>` | Preshared key of the client `<client>` | The host does not build while that client is enabled |
@@ -207,7 +210,9 @@ Afterwards:
 
 `rpizh` and `rpius` are headless, with the minimal home: shell, git and SSH.
 Each is a VPN server (`my.vpnServer`): WireGuard, reachable from the internet
-and hardened for it, upgrading itself from this repository every day.
+and hardened for it, upgrading itself from this repository every day. `rpizh`
+also runs Homebridge, at `http://<its address>:8581` from the home network,
+with the plugins for a Dreame vacuum and a Synology NAS.
 
 | To | Read |
 | --- | --- |

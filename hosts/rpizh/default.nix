@@ -1,5 +1,5 @@
 # A Raspberry Pi 4 in an Argon One case, at home: the VPN's server.
-{ inputs, ... }:
+{ inputs, pkgs, ... }:
 {
   imports = [
     inputs.self.nixosModules.default
@@ -22,6 +22,14 @@
     hardened.neverBan = [ "10.*" ];
 
     argonOne.enable = true;
+
+    homebridge = {
+      enable = true;
+      plugins = [
+        pkgs.homebridge-miot
+        pkgs.homebridge-synology
+      ];
+    };
 
     # PiVPN's port and network, which the clients it set up still use.
     wireguard = {
