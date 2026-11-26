@@ -6,6 +6,12 @@ let
       sops-host = final.callPackage ../pkgs/sops-host.nix { };
     };
 
+    homebridge = final: _prev: {
+      homebridge-miot = final.callPackage ../pkgs/homebridge-miot { };
+      homebridge-password-hash = final.callPackage ../pkgs/homebridge-password-hash.nix { };
+      homebridge-synology = final.callPackage ../pkgs/homebridge-synology { };
+    };
+
     ncro = final: _prev: {
       # Upstream's package.nix links libsqlite3-sys against a sqlite it does not declare.
       ncro = (final.callPackage "${inputs.ncro}/nix/package.nix" { }).overrideAttrs (old: {
