@@ -11,10 +11,12 @@ in
 {
   imports = [
     ./alerts/healthchecks-io.nix
+    ./auto-rollback.nix
     ./auto-upgrade.nix
     ./duckdns.nix
     ./hardened.nix
     ./nix-nixbuild.nix
+    ./post-switch.nix
     ./ssh-server.nix
     ./wireguard.nix
   ];
@@ -22,8 +24,8 @@ in
   options.my.vpnServer.enable = lib.mkEnableOption ''
     a VPN server reachable from the internet. Turns on `my.wireguard`,
     `my.sshServer`, `my.hardened`, `my.duckdns`, `my.autoUpgrade`,
-    `my.alerts.healthchecksIo`, and `my.nix.nixbuild` for the server's own
-    system. The server upgrades at 06:00 in `my.locale.timeZone`, and
+    `my.autoRollback`, `my.alerts.healthchecksIo`, and `my.nix.nixbuild` for
+    the server's own system. The server upgrades at 06:00 in `my.locale.timeZone`, and
     reboots for a new kernel before 08:00. The host sets who logs in, its
     home network, its time zone, and the VPN's port, subnet and clients'';
 
@@ -50,14 +52,15 @@ in
           lower = "05:30";
           upper = "08:00";
         };
-        # An upgrade that can still fetch the next one can be fixed by it.
-        checks = {
-          upgrade-timer = "systemctl is-active --quiet nixos-upgrade.timer";
-          route = "ip route get 1.1.1.1";
-        }
-        // lib.optionalAttrs (githubRepository != null) {
-          repository = "${lib.getExe pkgs.curl} -fsS --max-time 30 -o /dev/null https://github.com/${lib.head githubRepository}";
-        };
+      };
+      autoRollback.enable = lib.mkDefault true;
+      # A server that can still fetch the next upgrade can be fixed by it.
+      postSwitch.checks = {
+        upgrade-timer = "systemctl is-active --quiet nixos-upgrade.timer";
+        route = "ip route get 1.1.1.1";
+      }
+      // lib.optionalAttrs (githubRepository != null) {
+        repository = "${lib.getExe pkgs.curl} -fsS --max-time 30 -o /dev/null https://github.com/${lib.head githubRepository}";
       };
     };
   };

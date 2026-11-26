@@ -9,15 +9,15 @@ let
 in
 {
   imports = [
-    ./auto-upgrade.nix
+    ./post-switch.nix
     ./secrets.nix
   ];
 
   options.my.duckdns.enable = lib.mkEnableOption ''
     updating DuckDNS every five minutes. The sops file holds the account's
     `duckdns/token`, and `duckdns/domains`: the names without `.duckdns.org`,
-    one per line. With `my.autoUpgrade`, an update that keeps failing fails
-    its checks'';
+    one per line. An update that keeps failing fails
+    `my.postSwitch.checks`'';
 
   config = lib.mkIf config.my.duckdns.enable (
     lib.mkMerge [
@@ -36,7 +36,7 @@ in
           domainsFile = config.sops.secrets.${secrets.domains}.path;
         };
 
-        my.autoUpgrade.checks.duckdns = "! systemctl is-failed --quiet duckdns.service";
+        my.postSwitch.checks.duckdns = "! systemctl is-failed --quiet duckdns.service";
 
         # The first run is at boot: wait for an address and DNS.
         systemd.services.duckdns = {

@@ -55,7 +55,7 @@ let
 in
 {
   imports = [
-    ./auto-upgrade.nix
+    ./post-switch.nix
     ./secrets.nix
   ];
 
@@ -193,7 +193,7 @@ in
 
         environment.systemPackages = [ wgPeers ];
 
-        my.autoUpgrade.checks.wireguard = "systemctl is-active --quiet wireguard-wg0.service";
+        my.postSwitch.checks.wireguard = "systemctl is-active --quiet wireguard-wg0.service";
 
         sops.secrets = {
           ${privateKey}.restartUnits = [ "wireguard-wg0.service" ];

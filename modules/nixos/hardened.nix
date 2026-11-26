@@ -34,7 +34,7 @@ let
 in
 {
   imports = [
-    ./auto-upgrade.nix
+    ./post-switch.nix
     ./nix.nix
     ./secrets.nix
     ./ssh-server.nix
@@ -109,7 +109,7 @@ in
     nix.settings.allowed-users = [ "root" ] ++ cfg.sshUsers;
 
     # No password is what a sops file that cannot be decrypted leaves root with.
-    my.autoUpgrade.checks = lib.mkIf hasRootPassword {
+    my.postSwitch.checks = lib.mkIf hasRootPassword {
       root-password = "grep -q '^root:[$]' /etc/shadow";
     };
 

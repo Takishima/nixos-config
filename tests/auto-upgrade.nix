@@ -1,25 +1,33 @@
-# my.autoUpgrade.checks, with the real units: the upgrade is what the test writes
-# to /run/upgrade, and a specialisation stands in for the upgraded system.
+# my.autoUpgrade with my.autoRollback, and the real units: the upgrade is what the
+# test writes to /run/upgrade, and a specialisation stands in for the new system.
 { lib, self, ... }:
 {
   name = "auto-upgrade";
 
   nodes.machine = {
-    imports = [ self.nixosModules.auto-upgrade ];
+    imports = [
+      self.nixosModules.auto-rollback
+      self.nixosModules.auto-upgrade
+    ];
 
-    my.autoUpgrade = {
-      enable = true;
-      # No reboot by the stand-in below: the test sets up each reboot itself.
-      allowReboot = false;
-      checks = {
-        healthy = "test -e /run/healthy";
-        other = "test ! -e /run/other-broken";
-        recorded = "test ! -e /run/watch || cat /var/lib/nixos-upgrade/pending > /run/seen";
-        failsOnce = "if [ -e /run/fail-once ]; then rm /run/fail-once; false; fi";
-        failsLater = "if [ -e /run/fail-later ]; then if [ -e /run/sampled ]; then false; else touch /run/sampled; fi; fi";
+    my = {
+      autoUpgrade = {
+        enable = true;
+        # No reboot by the stand-in below: the test sets up each reboot itself.
+        allowReboot = false;
       };
-      settleSeconds = 1;
-      retrySeconds = 0;
+      autoRollback.enable = true;
+      postSwitch = {
+        checks = {
+          healthy = "test -e /run/healthy";
+          other = "test ! -e /run/other-broken";
+          recorded = "test ! -e /run/watch || cat /var/lib/nixos-upgrade/pending > /run/seen";
+          failsOnce = "if [ -e /run/fail-once ]; then rm /run/fail-once; false; fi";
+          failsLater = "if [ -e /run/fail-later ]; then if [ -e /run/sampled ]; then false; else touch /run/sampled; fi; fi";
+        };
+        settleSeconds = 1;
+        retrySeconds = 0;
+      };
     };
 
     systemd.services = {

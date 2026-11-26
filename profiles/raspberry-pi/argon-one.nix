@@ -11,7 +11,7 @@
   options.my.argonOne.enable = lib.mkEnableOption "the fan of an Argon One case, at the speeds of Argon's own daemon";
 
   config = lib.mkIf config.my.argonOne.enable {
-    ${if options.my ? autoUpgrade then "my" else null}.autoUpgrade.checks.argon-one-fan =
+    ${if options.my ? postSwitch then "my" else null}.postSwitch.checks.argon-one-fan =
       "systemctl is-active --quiet argon-one-fan.service";
 
     hardware.i2c.enable = true;

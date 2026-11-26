@@ -69,7 +69,7 @@ in
           server.fail("command -v sudo")
           server.succeed(${
             lib.concatMapStringsSep ", " (check: "\"${check}\"") (
-              lib.attrValues nodes.server.my.autoUpgrade.checks
+              lib.attrValues nodes.server.my.postSwitch.checks
             )
           })
 

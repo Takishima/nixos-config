@@ -7,7 +7,7 @@ For the hours and the commands, see [Updates](raspberry-pi.md#updates).
 
 An upgrade is good when you can still log in, and the server can still fetch the
 next upgrade. Whatever else it breaks, a commit to `main` can then repair. So
-the checks of a VPN server (`my.autoUpgrade.checks`) are these:
+the checks of a VPN server (`my.postSwitch.checks`) are these:
 
 | Check | Passes when |
 | --- | --- |
@@ -24,7 +24,8 @@ upgrade may be what repairs it.
 ## What the server does with a bad one
 
 The server tries the checks for ten minutes, which leaves a slow network the
-time to come up. Then it goes back to the system it ran before.
+time to come up. Then it goes back to the system it ran before
+(`my.autoRollback`).
 
 - After an upgrade that switched the running system, it switches back, and tries
   the upgrade again the next day.

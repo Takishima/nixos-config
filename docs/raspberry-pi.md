@@ -148,7 +148,7 @@ if the kernel changed. The hours are in the Pi's own time zone,
 
 The repository has to stay public: the Pi fetches it without credentials.
 
-If an upgrade fails one of `my.autoUpgrade.checks`, the Pi goes back to the
+If an upgrade fails one of `my.postSwitch.checks`, the Pi goes back to the
 system it ran before: see [About the automatic upgrades](automatic-upgrades.md).
 To see which check failed, on the Pi:
 

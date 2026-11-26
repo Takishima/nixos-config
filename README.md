@@ -51,9 +51,11 @@ A feature with a system part and a home part uses one option name for both
 | `my.wireguard` | A WireGuard server: port, subnet and clients declared, keys from sops |
 | `my.homebridge` | Homebridge: a HomeKit bridge with the plugins of `my.homebridge.plugins`, and its web interface on port 8581, for every network but the VPN's clients, without privileges |
 | `my.hardened` | For a server on the internet: no sudo, root's password from sops, fail2ban, stricter kernel and firewall |
-| `my.autoUpgrade` | Daily upgrade to this flake's system, rolled back if its checks fail, also after a reboot |
+| `my.postSwitch` | The checks a system has to pass after an upgrade. Each module adds those of what it turns on |
+| `my.autoRollback` | For a server: goes back to the system before when `my.postSwitch.checks` fail, also after a reboot |
+| `my.autoUpgrade` | Daily upgrade to this flake's system, judged by `my.postSwitch.checks` |
 | `my.alerts.healthchecksIo` | Pings a healthchecks.io check when a unit succeeds, and reports one that fails |
-| `my.vpnServer` | `my.wireguard`, `my.hardened`, `my.autoUpgrade`, `my.alerts.healthchecksIo`, `my.sshServer`, `my.duckdns` and `my.nix.nixbuild`: what a VPN server is made of |
+| `my.vpnServer` | `my.wireguard`, `my.hardened`, `my.autoUpgrade`, `my.autoRollback`, `my.alerts.healthchecksIo`, `my.sshServer`, `my.duckdns` and `my.nix.nixbuild`: what a VPN server is made of |
 
 | Home (`modules/home`) | |
 | --- | --- |

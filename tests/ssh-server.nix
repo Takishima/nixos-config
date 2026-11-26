@@ -49,7 +49,7 @@
           assert client.succeed(f"{with_key} alice@server whoami").strip() == "alice"
 
       with subtest("its upgrade check passes while sshd runs"):
-          server.succeed("${nodes.server.my.autoUpgrade.checks.sshd}")
+          server.succeed("${nodes.server.my.postSwitch.checks.sshd}")
 
       with subtest("root is refused, even with an authorized key"):
           client.fail(f"{with_key} root@server true")
