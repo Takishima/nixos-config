@@ -9,6 +9,10 @@
           },
           {
             "type": "command",
+            "command": "if [ \"${CLAUDE_CODE_REMOTE:-}\" = true ]; then \"$CLAUDE_PROJECT_DIR/.claude/hooks/use-ci-caches.sh\"; fi"
+          },
+          {
+            "type": "command",
             "command": "if [ \"${CLAUDE_CODE_REMOTE:-}\" = true ]; then \"$CLAUDE_PROJECT_DIR/.claude/hooks/fetch-flake-inputs.sh\"; fi",
             "async": true
           }
