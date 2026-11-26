@@ -185,6 +185,12 @@
         succeeds(install_original)
         same(read("pending"), original)
         same(link(good), other)
+        machine.fail(f"test -e {state}/rebooted")
+
+    with subtest("the reboot it schedules is recorded too"):
+        succeeds(f"{install_original}; shutdown -r +60")
+        machine.succeed("shutdown -c")
+        same(read("rebooted"), original)
 
     with subtest("after the reboot, it is kept if it passes its checks"):
         booted_upgrade()
@@ -236,6 +242,32 @@
         replacement = link(f"{original}/specialisation/next")
         succeeds(f"nix-env --profile {profile} --set {replacement}")
         same(read("pending"), replacement)
+
+    def awaiting_other():
+        """As when `original`, the system before, is booted while the upgrade to `other` awaits its reboot."""
+        switch_unchecked(original)
+        machine.succeed(
+            f"nix-env --profile {profile} --set {other}",
+            f"echo {other} > {state}/pending",
+            f"rm -f {state}/bad {state}/strikes {state}/rebooted",
+        )
+
+    with subtest("an upgrade that was not rebooted for is still awaited after another boot"):
+        awaiting_other()
+        machine.succeed("systemctl restart nixos-upgrade-confirm.service")
+        same(read("pending"), other)
+        same(link(profile), other)
+
+    with subtest("an upgrade that did not come up after its reboot is a failure"):
+        awaiting_other()
+        machine.succeed(f"echo {other} > {state}/rebooted")
+        machine.fail("systemctl restart nixos-upgrade-confirm.service")
+        journal = machine.succeed("journalctl -u nixos-upgrade-confirm.service -n 20 --no-pager")
+        assert "did not come up after its reboot" in journal, journal
+        same(link(profile), original)
+        same(read("bad"), other)
+        same(read("strikes"), "1")
+        machine.fail(f"test -e {state}/pending")
 
     with subtest("a rollback that cannot be made is not reported as made"):
         machine.succeed(
