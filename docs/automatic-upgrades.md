@@ -38,6 +38,14 @@ upgrade again the next day. After a second failure in a row it leaves the
 upgrade alone for a week, or until `main` gives a different system. Otherwise a
 bad kernel would reboot the server twice every morning.
 
+On a Pi with `my.trialBoot`, such as `rpius`, the firmware starts a system with
+a new kernel once, as a trial. `config.txt` keeps the last system that passed,
+so a reset, a power cut or a second reboot starts that one. The firmware also
+starts the watchdog with the kernel. A kernel that stops is reset within 15
+seconds, and a system that does not reach systemd within five minutes. The
+server counts a trial that did not come up as a failure after a reboot, with
+the same second try.
+
 The server judges a `nixos-rebuild switch` or `test` run by hand the same way.
 The checks start when the switch ends, in `post-switch-checks.service`, and a
 system that fails them is switched back. To keep a system that breaks a check
@@ -49,12 +57,16 @@ journal of `post-switch-checks.service`.
 
 ## What the checks do not catch
 
-- A kernel that fails before any service starts. The watchdog resets the Pi,
-  which boots the same kernel again: see
-  [If the Pi does not boot](raspberry-pi.md#if-the-pi-does-not-boot).
-- The firmware partition, with U-Boot and `config.txt`. Every switch rewrites
-  it, and it is not kept per generation: a rollback does not bring the old one
-  back.
+- Without `my.trialBoot`, as on `rpizh`, a kernel that fails before any
+  service starts. The watchdog resets the Pi, which boots the same kernel
+  again: see [If the Pi does not boot](raspberry-pi.md#if-the-pi-does-not-boot).
+- Without `my.trialBoot`, the firmware partition, with U-Boot and `config.txt`.
+  Every switch rewrites it, and it is not kept per generation: a rollback does
+  not bring the old one back.
+- With `my.trialBoot`, a system that changes the device trees or `config.txt`
+  and keeps the kernel. The upgrade does not reboot for it, so the trial waits
+  for the next reboot. A power cut before that starts the system before, until
+  the next morning.
 - A commit that removes the checks. The upgraded system brings its own checks,
   so it is judged by what it says itself.
 

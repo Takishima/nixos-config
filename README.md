@@ -213,9 +213,10 @@ Afterwards:
 
 `rpizh` and `rpius` are headless, with the minimal home: shell, git and SSH.
 Each is a VPN server (`my.vpnServer`): WireGuard, reachable from the internet
-and hardened for it, upgrading itself from this repository every day. `rpizh`
-also runs Homebridge, at `http://<its address>:8581` from the home network,
-with the plugins for a Dreame vacuum and a Synology NAS.
+and hardened for it, upgrading itself from this repository every day. `rpius`
+boots a new kernel once as a trial (`my.trialBoot`). `rpizh` also runs
+Homebridge, at `http://<its address>:8581` from the home network, with the
+plugins for a Dreame vacuum and a Synology NAS.
 
 | To | Read |
 | --- | --- |
