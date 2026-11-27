@@ -12,7 +12,6 @@
   my = {
     locale = {
       timeZone = "Europe/Zurich";
-      default = "en_GB.UTF-8";
       formats = "de_CH.UTF-8";
       consoleKeyMap = "sg";
     };
