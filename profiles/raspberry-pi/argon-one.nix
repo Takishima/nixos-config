@@ -7,6 +7,9 @@
   pkgs,
   ...
 }:
+let
+  sandbox = import ../../lib/service-sandbox.nix;
+in
 {
   options.my.argonOne.enable = lib.mkEnableOption "the fan of an Argon One case, at the speeds of Argon's own daemon";
 
@@ -21,7 +24,7 @@
       description = "Argon One case fan";
       wantedBy = [ "multi-user.target" ];
       path = [ pkgs.i2c-tools ];
-      serviceConfig = {
+      serviceConfig = sandbox.unprivileged // {
         Restart = "always";
         DynamicUser = true;
         SupplementaryGroups = [ config.hardware.i2c.group ];
@@ -29,26 +32,6 @@
         DeviceAllow = "/dev/i2c-1 rw";
         PrivateNetwork = true;
         RestrictAddressFamilies = "none";
-        CapabilityBoundingSet = "";
-        LockPersonality = true;
-        MemoryDenyWriteExecute = true;
-        ProcSubset = "pid";
-        ProtectClock = true;
-        ProtectControlGroups = true;
-        ProtectHome = true;
-        ProtectHostname = true;
-        ProtectKernelLogs = true;
-        ProtectKernelModules = true;
-        ProtectKernelTunables = true;
-        ProtectProc = "invisible";
-        RestrictNamespaces = true;
-        RestrictRealtime = true;
-        SystemCallArchitectures = "native";
-        SystemCallFilter = [
-          "@system-service"
-          "~@privileged"
-          "~@resources"
-        ];
       };
       script = ''
         set -u

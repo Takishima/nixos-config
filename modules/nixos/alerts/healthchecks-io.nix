@@ -7,6 +7,7 @@
 }:
 let
   cfg = config.my.alerts.healthchecksIo;
+  sandbox = import ../../../lib/service-sandbox.nix;
   secret = "healthchecks/url";
   hasUrl = config.my.secrets.has secret;
   url = config.sops.secrets.${secret}.path;
@@ -144,40 +145,12 @@ in
             };
             "healthchecks-ping@" = {
               description = "Send a ping to healthchecks.io";
-              serviceConfig = {
+              serviceConfig = sandbox.internetClient // {
                 ExecStart = lib.getExe send;
                 StandardInput = "socket";
                 StandardError = "journal";
                 DynamicUser = true;
                 LoadCredential = "url:${url}";
-                CapabilityBoundingSet = "";
-                LockPersonality = true;
-                MemoryDenyWriteExecute = true;
-                PrivateDevices = true;
-                PrivateUsers = true;
-                ProcSubset = "pid";
-                ProtectClock = true;
-                ProtectControlGroups = true;
-                ProtectHome = true;
-                ProtectHostname = true;
-                ProtectKernelLogs = true;
-                ProtectKernelModules = true;
-                ProtectKernelTunables = true;
-                ProtectProc = "invisible";
-                # AF_UNIX reaches nscd, which resolves names.
-                RestrictAddressFamilies = [
-                  "AF_INET"
-                  "AF_INET6"
-                  "AF_UNIX"
-                ];
-                RestrictNamespaces = true;
-                RestrictRealtime = true;
-                SystemCallArchitectures = "native";
-                SystemCallFilter = [
-                  "@system-service"
-                  "~@privileged"
-                  "~@resources"
-                ];
               };
             };
           }

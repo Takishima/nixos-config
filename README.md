@@ -20,6 +20,7 @@ Home-manager runs as a NixOS module, so one switch updates system and home.
 | `profiles/` | What a kind of machine needs: `raspberry-pi`, which boots from the Pi's firmware, a new kernel once as a trial, with `my.argonOne` for the fan of an Argon One case |
 | `home/damien/` | Damien's settings: `base.nix` for all, then `minimal.nix` for a server, or `default.nix` where he works and `homelinux.nix` on top. `server-account.nix` is his account on a server |
 | `overlays/`, `pkgs/` | Overlays and the packages they add |
+| `lib/` | Values the modules share: `service-sandbox.nix`, the systemd sandbox of their services |
 | `docs/` | Longer guides: provisioning a Raspberry Pi, the VPN's clients, how a VPN server is hardened and upgrades itself |
 | `skills/` | AI skills, as `<area>/<name>/{meta.nix, body.md, references/}` |
 | `.claude/skills/` | The skills an agent uses when working on this repository: pointers into `skills/` |
