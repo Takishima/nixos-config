@@ -123,13 +123,9 @@
           home-manager.sharedModules = [ self.homeModules.default ];
         }
         // {
-          # Not part of `default`: they set the machine up as a Raspberry Pi.
+          # Not part of `default`: it sets the machine up as a Raspberry Pi.
           raspberry-pi-4.imports = [
             inputs.nixos-hardware.nixosModules.raspberry-pi-4
-            ./profiles/raspberry-pi
-          ];
-          raspberry-pi-5.imports = [
-            inputs.nixos-hardware.nixosModules.raspberry-pi-5
             ./profiles/raspberry-pi
           ];
         };

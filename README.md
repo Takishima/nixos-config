@@ -99,7 +99,7 @@ them as `default`. A module brings everything it needs: no other imports, no
 | --- | --- |
 | `nixosModules.<name>`, `nixosModules.default` | The files of `modules/nixos` |
 | `homeModules.<name>`, `homeModules.default` | The files of `modules/home` |
-| `nixosModules.raspberry-pi-4`, `nixosModules.raspberry-pi-5` | `profiles/raspberry-pi` with nixos-hardware's board module; not part of `default` |
+| `nixosModules.raspberry-pi-4` | `profiles/raspberry-pi` with nixos-hardware's board module; not part of `default` |
 | `packages.<system>.wireguard-<host>` | Manages the clients of a host with `my.wireguard` |
 | `packages.<system>.provision-<host>` | Writes a Pi's SD card, with its host key |
 | `packages.aarch64-linux.<host>-sd-image` | A Pi's SD image |
