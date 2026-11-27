@@ -1,13 +1,9 @@
 # A headless Raspberry Pi booting NixOS from its SD card, any model.
 {
-  config,
   lib,
   modulesPath,
   ...
 }:
-let
-  uBoot = !config.my.trialBoot.enable;
-in
 {
   imports = [
     (modulesPath + "/installer/sd-card/sd-image.nix")
@@ -30,29 +26,16 @@ in
       loader.timeout = 1;
     };
 
-    sdImage = {
-      # Room for the vendor device trees and overlays; the default is 30 MiB.
-      firmwareSize = 256;
-      populateRootCommands = lib.mkIf uBoot ''
-        mkdir -p ./files/boot
-        ${config.boot.loader.generic-extlinux-compatible.populateCmd} -c ${config.system.build.toplevel} -d ./files/boot
-      '';
-    };
+    # Room for the vendor device trees and overlays; the default is 30 MiB.
+    sdImage.firmwareSize = 256;
 
     documentation = {
       nixos.enable = false;
       doc.enable = false;
     };
 
-    hardware = {
-      # The image asks for drivers of every ARM board; the Pi kernel has few of them.
-      enableAllHardware = lib.mkForce false;
-      raspberry-pi.firmware = {
-        # Keep /boot/firmware in step with the system on every switch.
-        enable = uBoot;
-        uboot.enable = uBoot;
-      };
-    };
+    # The image asks for drivers of every ARM board; the Pi kernel has few of them.
+    hardware.enableAllHardware = lib.mkForce false;
 
     fileSystems = {
       "/".options = [ "noatime" ];

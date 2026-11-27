@@ -19,8 +19,6 @@
 
     hardened.neverBan = [ "192.168.1.*" ];
 
-    trialBoot.enable = true;
-
     # PiVPN's port and network, which the clients it set up still use.
     wireguard = {
       port = 1194;

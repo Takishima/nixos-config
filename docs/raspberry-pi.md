@@ -168,9 +168,9 @@ You cannot push a system built on another machine to the Pi. It only takes
 paths signed by a cache it knows: see
 [About the hardening of a VPN server](server-hardening.md).
 
-To update the boot loader in the Pi's EEPROM, which an upgrade does not touch,
-run as root `nix shell nixpkgs#raspberrypi-eeprom -c rpi-eeprom-update -a`, then
-reboot.
+The firmware's watchdog needs a boot loader in the Pi's EEPROM from July 2025
+or later. To update it, which an upgrade does not do, run as root
+`nix shell nixpkgs#raspberrypi-eeprom -c rpi-eeprom-update -a`, then reboot.
 
 ### Get told when an upgrade fails
 
@@ -198,21 +198,14 @@ fails, or when the Pi goes silent.
 
 ## If the Pi does not boot
 
-A Pi with `my.trialBoot`, as both are, goes back by itself to the system
-before when a new kernel does not come up: see
-[About the automatic upgrades](automatic-upgrades.md). It has no boot menu. If
-it does not boot at all, write the card again, the second way below.
+The Pi goes back by itself to the system before when a new kernel does not
+come up: see [About the automatic upgrades](automatic-upgrades.md). It has no
+boot menu.
 
-Without `my.trialBoot`, the watchdog resets a Pi that hangs, which then boots
-the same system again. First get the Pi up in one of two ways:
-
-- Connect a screen and a keyboard. U-Boot shows its menu for one second: choose
-  an older generation there.
-- Write the card again from a commit that booted: check it out and follow
-  [step 5](#5-write-the-card). The Pi comes back as the same machine.
-
-Then repair `main` before the next morning. Until you do, the Pi upgrades to
-the same system again, and the first way boots it again at any reboot.
+If it does not boot at all, write the card again from a commit that booted:
+check it out and follow [step 5](#5-write-the-card). The Pi comes back as the
+same machine. Then repair `main` before the next morning. Until you do, the Pi
+upgrades to the same system again.
 
 The kernel logs to the serial console too, `ttyS0` at 115200 baud.
 
@@ -235,7 +228,6 @@ VPN server `wireguard-<name>`. For another VPN server:
    | IPv6 and DNS for the VPN's clients | `my.wireguard.subnet6`, `my.wireguard.dns` |
    | The time zone and the locales | `my.locale` |
    | The fan, if the Pi is in an Argon One case | `my.argonOne.enable` |
-   | A new kernel booted once as a trial, without U-Boot | `my.trialBoot.enable` |
 
    Keep the import of `home/damien/server-account.nix` unless you work on the
    machine. For a Pi 5, import `nixosModules.raspberry-pi-5`. It evaluates, but
