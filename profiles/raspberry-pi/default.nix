@@ -23,7 +23,6 @@
       ];
       # The Pi takes its address on Ethernet: the radio's driver stays out.
       blacklistedKernelModules = [ "brcmfmac" ];
-      loader.timeout = 1;
     };
 
     # Room for the vendor device trees and overlays; the default is 30 MiB.
