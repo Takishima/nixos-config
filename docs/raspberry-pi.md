@@ -195,8 +195,7 @@ VPN server `wireguard-<name>`. For another VPN server:
    | The fan, if the Pi is in an Argon One case | `my.argonOne.enable` |
 
    Keep the import of `home/damien/server-account.nix` unless you work on the
-   machine. For a Pi 5, import `nixosModules.raspberry-pi-5`. It evaluates, but
-   no Pi 5 has booted it yet.
+   machine.
 
    The flake only sees files git tracks: `git add hosts/<name>`.
 
