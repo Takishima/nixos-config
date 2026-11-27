@@ -2,46 +2,42 @@
   "peers": {
     "brother-phone": {
       "address": "10.117.17.9",
-      "publicKey": "SsF2e8uyKgH7bOweAu5CEo3Q0Pnm+OIL0Q+e56xfWFo="
-    },
-    "dad-dell": {
-      "address": "10.117.17.6",
-      "publicKey": "uXOosY8uggrSbOfAHzJALuQyb3/KDnabTSO596uXRwI="
+      "publicKey": "W1iFASHQ+/Nd68SqUWCPaOlroA6W0lWw7ZvoYVtmAAE="
     },
     "dad-ipad": {
       "address": "10.117.17.4",
-      "publicKey": "zW/1JNdn/OtTZwm28T9zGsX14aseCVamHmF3CdTN7UQ="
+      "publicKey": "aDV+v+K8BWsmeDcoplUGkmY36tuUhhw2Re+C2/mVzT8="
     },
     "dad-laptop": {
       "address": "10.117.17.5",
-      "publicKey": "QEIVLyaUT1vXLWPD8tjVPn4cg0yfeKNAKkfPq1qdA2U="
+      "publicKey": "AIWyep6fhXrYa/1iY3fsC5+6Ow6MHJoDzVnSceFE+Rw="
     },
     "dad-lenovo-win11": {
       "address": "10.117.17.7",
-      "publicKey": "qb7SP9IZLcYeSRKQBtofwwriLulf22gQvYFqpieMB1o="
+      "publicKey": "68Y1hUxDe98hUpGARjmxtHXKI/8x3PjBWCJnDL7UQgA="
     },
     "dad-surface-2026": {
       "address": "10.117.17.10",
-      "publicKey": "0QY/KoBv3Ig7LuIwheqtaxJc9/YhYIXbtxSwjPH4lE0="
+      "publicKey": "Uli0tl1DKdxKJXEOffEXieTJtQz5n/biM6PUm32USmA="
     },
     "dad-win2019": {
       "address": "10.117.17.11",
-      "publicKey": "6sMuA1qQircWqMQb01MCK2VyLIrt1bKTLmnyABfL8Qw="
+      "publicKey": "q//RbBafBhmPOb46oKa1CAX1qHoqDtnHTKxD89tcYkk="
     },
     "me-ipad": {
       "address": "10.117.17.2",
       "localNetwork": true,
-      "publicKey": "yLuMFnbhFH6AcQHUuaS8P9YogikZPRiQ8JfZe3eG4x8="
+      "publicKey": "U+IKPiZRViVkCZcHb+9jDknaPaySvR2Chd+xrWliY2o="
     },
     "me-iphone": {
       "address": "10.117.17.3",
       "localNetwork": true,
-      "publicKey": "mauUjWsarONf9LZ4D562gyvaC+LlytvpP6m/R1/haVE="
+      "publicKey": "NqYGpEqiCJjfGszWZP3Aq5YDkrle0oRBpzGeP7DgrG8="
     },
     "mom_macbook": {
       "address": "10.117.17.8",
-      "publicKey": "qDJDSPgmmQjdHeVRvrhFb2WVwYRtocmz/1ZtuIFAxkE="
+      "publicKey": "XQn9U/mrk5++E+2S1hPuvxTQdstq1eMTUqpL3NcP20w="
     }
   },
-  "publicKey": "TwWd/3oxxdpB3F8ppqN61KPZsOR6umYiuyZJRbGxNh0="
+  "publicKey": "s4Hj2enDdOtK7UXg/N2sJR6znadZ2Xq7YdTB5FVXqy0="
 }
