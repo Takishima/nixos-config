@@ -6,7 +6,7 @@ server, and how to give the server new keys. The examples are for `rpizh`;
 
 `wireguard-rpizh` manages the clients from a checkout of this repository, on any
 machine. Set `SOPS_AGE_KEY` first, as in
-[step 2 of provisioning](raspberry-pi.md#2-secrets): `add`, `remove` and
+[step 1 of provisioning](raspberry-pi.md#1-secrets): `add`, `remove` and
 `rotate` read and write `secrets/rpizh.yaml` with it. Then run the command at
 the root of the checkout:
 
@@ -53,7 +53,7 @@ SSH host key, which decrypts everything in `secrets/rpizh.yaml`, also what
 `rotate` writes later. First replace the host key: make a new one in 1Password,
 put its age recipient in `.sops.yaml`, run `sops updatekeys secrets/rpizh.yaml`
 and set `SOPS_AGE_KEY` from the new key. Then change every other secret in the
-file, run `rotate`, and [write a new card](raspberry-pi.md#5-write-the-card).
+file, run `rotate`, and [write a new card](raspberry-pi.md#3-write-the-card).
 
 1. Make the new keys, in a file outside the checkout:
 

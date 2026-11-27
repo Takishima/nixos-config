@@ -3,10 +3,6 @@
   lib,
   writeShellApplication,
   coreutils,
-  gawk,
-  gnugrep,
-  gnutar,
-  gzip,
   jq,
   qrencode,
   sops,
@@ -25,10 +21,6 @@ writeShellApplication {
   name = "wireguard-${host}";
   runtimeInputs = [
     coreutils
-    gawk
-    gnugrep
-    gnutar
-    gzip
     jq
     qrencode
     sops
@@ -45,8 +37,6 @@ writeShellApplication {
     Usage: wireguard-${host} <command>
 
       init                      a new server: makes its key
-      import <wg0.conf|.tgz>    an existing server and its clients, from its
-                                wg0.conf or a tar of /etc/wireguard (PiVPN's too)
       add <name> [--endpoint <public name>] [--public-key <key>] [-o <file>]
                                 a new client; prints its configuration and QR code.
                                 The endpoint defaults to wireguard/endpoint in
@@ -77,7 +67,7 @@ writeShellApplication {
     [ -z "$command" ] || [ -d "$(dirname "$file")" ] ||
       die "no $(dirname "$file") here: run it at the root of the repository"
     case $command in
-      init | import | add | remove | rotate)
+      init | add | remove | rotate)
         sops decrypt "$secrets" >/dev/null || die "sops cannot decrypt $secrets: is SOPS_AGE_KEY set?"
         ;;
     esac
@@ -95,7 +85,7 @@ writeShellApplication {
     server_key() {
       local key
       key=$(state | jq -r '.publicKey // empty')
-      [ -n "$key" ] || die "$file has no server yet: run init, or import"
+      [ -n "$key" ] || die "$file has no server yet: run init"
       echo "$key"
     }
     existing_client() {
@@ -143,93 +133,6 @@ writeShellApplication {
         secret private_key "$private"
         write_secrets
         save <<<"$new"
-        ;;
-
-      import)
-        [ $# -eq 1 ] || die "import takes the server's wg0.conf, or a tar of its /etc/wireguard"
-        [ -f "$1" ] || die "no file $1"
-        [ "$(state | jq '.peers | length')" = 0 ] || die "$file already has clients"
-        case $1 in
-          *.tgz | *.tar.gz | *.tar)
-            member=$(tar tf "$1" | grep -E '(^|/)wg0\.conf$' | head -n 1) || die "$1 holds no wg0.conf"
-            conf=$(tar xOf "$1" "$member")
-            ;;
-          *) conf=$(cat "$1") ;;
-        esac
-
-        # PiVPN names a peer in "### begin <name> ###" and comments out a
-        # disabled one with "#[disabled] ".
-        parsed=$(awk '
-          function flush() {
-            if (inpeer) printf "peer\037%s\037%s\037%s\037%s\037%s\n", name, enabled, pub, (psk == "" ? "-" : psk), ips
-            inpeer = 0; pub = psk = ips = ""
-          }
-          {
-            line = $0; disabled = 0
-            sub(/\r$/, "", line)
-            if (sub(/^#\[disabled\] ?/, "", line)) disabled = 1
-          }
-          line ~ /^### begin .* ###$/ { marker = line; sub(/^### begin /, "", marker); sub(/ ###$/, "", marker); next }
-          line ~ /^### end / { next }
-          line ~ /^#/ { comment = line; sub(/^#+ */, "", comment); next }
-          line ~ /^\[Interface\]/ { flush(); section = "interface"; next }
-          line ~ /^\[Peer\]/ {
-            flush(); section = "peer"; inpeer = 1; count++
-            name = marker != "" ? marker : (comment != "" ? comment : "peer" count)
-            marker = comment = ""
-            enabled = disabled ? "false" : "true"
-            next
-          }
-          line ~ /=/ {
-            key = tolower(line); sub(/[ \t]*=.*/, "", key)
-            value = line; sub(/^[^=]*=[ \t]*/, "", value); sub(/[ \t]+$/, "", value)
-            if (section == "interface") {
-              if (key == "privatekey") private = value
-              if (key == "address") address = value
-              if (key == "listenport") port = value
-            } else {
-              if (key == "publickey") pub = value
-              if (key == "presharedkey") psk = value
-              if (key == "allowedips") ips = value
-            }
-            comment = ""
-          }
-          END { flush(); printf "interface\037%s\037%s\037%s\n", private, address, port }
-        ' <<<"$conf")
-
-        IFS=$'\037' read -r _ private address listen < <(grep '^interface' <<<"$parsed")
-        [ -n "$private" ] || die "$1 has no PrivateKey"
-        case ",''${address// /}," in
-          *",$prefix.1/24,"*) ;;
-          *) die "the server's address is $address, not $prefix.1/24: set my.wireguard.subnet to its network first" ;;
-        esac
-        if [ -z "$listen" ]; then
-          echo "The old server's wg0.conf sets no ListenPort: check that its clients connect to ${port}, which is my.wireguard.port." >&2
-        elif [ "$listen" != ${port} ]; then
-          echo "The old server listens on $listen, where its clients connect: set my.wireguard.port, now ${port}, to $listen." >&2
-        fi
-
-        new=$(state | jq --arg key "$(wg pubkey <<<"$private")" '.publicKey = $key')
-        secret private_key "$private"
-        while IFS=$'\037' read -r _ name enabled pub psk ips; do
-          name=$(tr -c 'A-Za-z0-9_.\n-' _ <<<"$name")
-          [ -n "$pub" ] || die "client $name has no PublicKey"
-          [ "$(jq --arg name "$name" '.peers | has($name)' <<<"$new")" = false ] || die "two clients are named $name"
-          address=
-          for ip in ''${ips//,/ }; do
-            case $ip in
-              "$prefix".*/32) address=''${ip%/32} ;;
-              *) echo "$name: $ip is not carried over, only its address in ${subnet}." >&2 ;;
-            esac
-          done
-          [ -n "$address" ] || die "client $name has no address in ${subnet}: $ips"
-          new=$(jq --arg name "$name" --arg key "$pub" --arg address "$address" --argjson enable "$enabled" \
-            '.peers[$name] = { publicKey: $key, address: $address } + (if $enable then {} else { enable: false } end)' <<<"$new")
-          [ "$psk" = - ] || secret "psk/$name" "$psk"
-        done < <(grep '^peer' <<<"$parsed" || true)
-        write_secrets
-        save <<<"$new"
-        echo "Imported $(jq '.peers | length' <<<"$new") clients into $file." >&2
         ;;
 
       add)
