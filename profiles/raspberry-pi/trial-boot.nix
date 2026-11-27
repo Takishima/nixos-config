@@ -19,17 +19,7 @@ let
   judged = options.my ? autoRollback && config.my.autoRollback.enable;
 in
 {
-  options.my.trialBoot.enable = lib.mkEnableOption ''
-    starting NixOS from the Raspberry Pi's firmware, without U-Boot. A system
-    with another kernel, initrd, device trees or `config.txt` boots once as a
-    trial, at the next reboot. Once it has booted, and with `my.autoRollback`
-    passed its checks, it is what the Pi boots. Until then a reset, a power
-    cut or a second reboot starts the system before. The firmware starts
-    the watchdog with the kernel, so a kernel that hangs is reset: that
-    needs a boot loader in the EEPROM from July 2025 or later. A switch
-    does not update the GPU's boot code, `start4.elf` and `fixup4.dat`'';
-
-  config = lib.mkIf config.my.trialBoot.enable {
+  config = {
     boot.loader.generic-extlinux-compatible.enable = false;
     # The firmware puts cgroup_disable=memory first on the command line.
     boot.kernelParams = [ "cgroup_enable=memory" ];

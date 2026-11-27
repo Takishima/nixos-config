@@ -17,7 +17,7 @@ Home-manager runs as a NixOS module, so one switch updates system and home.
 | `hosts/<host>/` | One machine: disk, hardware, which features are on. The flake takes every directory here |
 | `modules/nixos/` | One module per system feature, each behind a `my.*` option |
 | `modules/home/` | One home-manager module per program or domain, also under `my.*` |
-| `profiles/` | What a kind of machine needs: `raspberry-pi`, with `my.argonOne` for the fan of an Argon One case, and `my.trialBoot` to boot without U-Boot, a new kernel once as a trial |
+| `profiles/` | What a kind of machine needs: `raspberry-pi`, which boots from the Pi's firmware, a new kernel once as a trial, with `my.argonOne` for the fan of an Argon One case |
 | `home/damien/` | Damien's settings: `base.nix` for all, then `minimal.nix` for a server, or `default.nix` where he works and `homelinux.nix` on top. `server-account.nix` is his account on a server |
 | `overlays/`, `pkgs/` | Overlays and the packages they add |
 | `docs/` | Longer guides: provisioning a Raspberry Pi, the VPN's clients, how a VPN server is hardened and upgrades itself |
@@ -214,7 +214,7 @@ Afterwards:
 `rpizh` and `rpius` are headless, with the minimal home: shell, git and SSH.
 Each is a VPN server (`my.vpnServer`): WireGuard, reachable from the internet
 and hardened for it, upgrading itself from this repository every day, and
-boots a new kernel once as a trial (`my.trialBoot`). `rpizh` also runs
+boots a new kernel once as a trial. `rpizh` also runs
 Homebridge, at `http://<its address>:8581` from the home network, with the
 plugins for a Dreame vacuum and a Synology NAS.
 

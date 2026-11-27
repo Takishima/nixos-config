@@ -38,13 +38,12 @@ upgrade again the next day. After a second failure in a row it leaves the
 upgrade alone for a week, or until `main` gives a different system. Otherwise a
 bad kernel would reboot the server twice every morning.
 
-Both Pis boot with `my.trialBoot`: the firmware starts a system with a new
-kernel once, as a trial. `config.txt` keeps the last system that passed, so a
-reset, a power cut or a second reboot starts that one. The firmware also starts
-the watchdog with the kernel. A kernel that stops is reset within 15 seconds,
-and a system that does not reach systemd within five minutes. The server counts
-a trial that did not come up as a failure after a reboot, with the same second
-try.
+The Pi's firmware starts a system with a new kernel once, as a trial.
+`config.txt` keeps the last system that passed, so a reset, a power cut or a
+second reboot starts that one. The firmware also starts the watchdog with the
+kernel. A kernel that stops is reset within 15 seconds, and a system that does
+not reach systemd within five minutes. The server counts a trial that did not
+come up as a failure after a reboot, with the same second try.
 
 The server judges a `nixos-rebuild switch` or `test` run by hand the same way.
 The checks start when the switch ends, in `post-switch-checks.service`, and a
