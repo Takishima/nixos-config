@@ -58,6 +58,7 @@ let
     "${toString childBridgePorts.start}-${toString childBridgePorts.end}"
   ];
   mdnsPort = 5353;
+  sandbox = import ../../lib/service-sandbox.nix;
 in
 {
   imports = [ ./secrets.nix ];
@@ -152,7 +153,7 @@ in
           rm -f ${userStoragePath}/.uix-secrets
         ''
       );
-      serviceConfig = {
+      serviceConfig = sandbox.isolated // {
         AmbientCapabilities = lib.mkForce "";
         # For ExecStartPre, which is root and hands the state to the user.
         CapabilityBoundingSet = lib.mkForce [
@@ -160,18 +161,9 @@ in
           "CAP_DAC_OVERRIDE"
           "CAP_FOWNER"
         ];
-        LockPersonality = true;
         NoNewPrivileges = true;
         PrivateDevices = true;
         PrivateTmp = true;
-        ProtectClock = true;
-        ProtectControlGroups = true;
-        ProtectHome = true;
-        ProtectHostname = true;
-        ProtectKernelLogs = true;
-        ProtectKernelModules = true;
-        ProtectKernelTunables = true;
-        ProtectProc = "invisible";
         ProtectSystem = "strict";
         # AF_NETLINK lists the interfaces to announce the bridge on.
         RestrictAddressFamilies = [
@@ -180,10 +172,7 @@ in
           "AF_NETLINK"
           "AF_UNIX"
         ];
-        RestrictNamespaces = true;
-        RestrictRealtime = true;
         RestrictSUIDSGID = true;
-        SystemCallArchitectures = "native";
         SystemCallFilter = [ "@system-service" ];
         UMask = "0077";
       };

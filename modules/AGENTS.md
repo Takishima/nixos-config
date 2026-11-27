@@ -18,6 +18,9 @@ a module. A NixOS module and a home-manager module are not interchangeable.
 - A module `imports` the sibling modules whose options it reads or sets:
   `imports = [ ./secrets.nix ];`. An external module it needs goes in the `deps`
   of `modulesIn` in `flake.nix`.
+- A service that needs no privileges takes its `serviceConfig` from
+  `lib/service-sandbox.nix`, and adds what is its own, as `nixos/duckdns.nix`
+  and `nixos/alerts/healthchecks-io.nix` do.
 - A module never names `damien`: that belongs in `hosts/` and `home/damien/`.
 - A module that bundles others (`vpn-server.nix`) sets them with `lib.mkDefault`
   where a host may disagree.
