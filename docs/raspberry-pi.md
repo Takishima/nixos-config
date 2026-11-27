@@ -1,33 +1,20 @@
 # How to provision a Raspberry Pi
 
-This guide shows you how to move `rpizh`, a Raspberry Pi 4, from Raspberry Pi OS
-to NixOS. At the end the Pi runs the system of this repository, with the SSH
-host key and the VPN clients it had before.
+This guide shows you how to put NixOS on `rpizh`, a Raspberry Pi 4. At the end
+the Pi runs the system of this repository, with its SSH host key and its VPN
+clients. For a Pi this repository does not have yet, start at
+[Another Pi](#another-pi).
 
 ## Before you start
 
 You need a machine with Nix and a checkout of this repository, and on it `sops`,
-`ssh-to-age` and the 1Password CLI, signed in. `homelinux` has them all.
+`ssh-to-age` and the 1Password CLI, signed in. `homelinux` has them all. The
+Pi's SSH host key is an SSH Key item in 1Password.
 
 Run every command of this guide at the root of the checkout, unless the step
 names the Pi.
 
-## 1. Save what the old system holds
-
-On the Pi, under Raspberry Pi OS:
-
-```sh
-sudo cat /etc/ssh/ssh_host_ed25519_key          # into 1Password, as an SSH Key item
-sudo cat /etc/wireguard/wg0.conf                # the VPN server and its clients, as wg0.conf
-sudo cat /etc/duckdns/duck.sh                   # the DuckDNS names and token, for the secrets
-```
-
-- Take the Ed25519 host key, not the RSA or ECDSA one, and not a key from
-  `~/.ssh`.
-- Copy `wg0.conf` to the checkout. A tar of the whole `/etc/wireguard` does as
-  well. Delete it once step 3 is done: it holds the server's private key.
-
-## 2. Secrets
+## 1. Secrets
 
 1. Add the host key's public half to `.sops.yaml`, as an age recipient:
 
@@ -35,8 +22,8 @@ sudo cat /etc/duckdns/duck.sh                   # the DuckDNS names and token, f
    op read "op://<vault>/<item>/public_key" | ssh-to-age
    ```
 
-2. Give `sops` the private half, read from 1Password. The later steps use it
-   too:
+2. Give `sops` the private half, read from 1Password. `wireguard-rpizh` uses
+   it too:
 
    ```sh
    export SOPS_AGE_KEY=$(op read "op://<vault>/<item>/private_key?ssh-format=openssh" | ssh-to-age -private-key)
@@ -53,34 +40,12 @@ sudo cat /etc/duckdns/duck.sh                   # the DuckDNS names and token, f
    | `wireguard/endpoint` | For `wireguard-rpizh add` |
    | `healthchecks/url` | To be [told of a failed upgrade](#get-told-when-an-upgrade-fails) |
    | `nixbuild_ssh_key` | To build on nixbuild.net |
-   | `wireguard/private_key`, `wireguard/psk/<client>` | Step 3 writes them |
+   | `wireguard/private_key`, `wireguard/psk/<client>` | `wireguard-rpizh` writes them |
 
 Every value must be a string. One that is not makes the Pi reject the whole
 file.
 
-To keep a password of the old system, take its hash there:
-`sudo getent shadow <user> | cut -d: -f2`.
-
-## 3. Bring the VPN over
-
-`wireguard-rpizh` reads the old server's `wg0.conf`, PiVPN's or any other. It
-writes the clients to `hosts/rpizh/wireguard.json` and the keys to the secrets:
-
-```sh
-nix run .#wireguard-rpizh -- import wg0.conf
-git add hosts/rpizh/wireguard.json secrets/rpizh.yaml
-```
-
-Every client keeps its key, its preshared key and its address, so none has to
-be set up again. A client PiVPN had disabled stays disabled
-(`"enable": false`).
-
-If the command refuses the server's address or reports another port, set
-`my.wireguard.subnet` and `my.wireguard.port` in `hosts/rpizh/default.nix` to
-what the old server has. The server's address must be the first of the subnet.
-The clients and the router's port forward expect both.
-
-## 4. Build the image
+## 2. Build the image
 
 On an x86 machine, first allow Nix to build for aarch64:
 
@@ -104,7 +69,7 @@ nix build .#packages.aarch64-linux.rpizh-sd-image \
   --option extra-trusted-public-keys dn-personal.cachix.org-1:8pB//y1vrWsFfDo9FebVmnMU3mF9t4bDDxaeQPN88RE=
 ```
 
-## 5. Write the card
+## 3. Write the card
 
 One command builds the image, writes it, and puts the host key on the card. It
 takes the card and the 1Password item that holds the host key:
@@ -120,7 +85,7 @@ device name.
 Never put the private key in the configuration or in the image build. It would
 land in the Nix store, readable by every user and pushed to the cache.
 
-## 6. First boot
+## 4. First boot
 
 1. On the router, reserve the address DHCP gives the Pi.
 2. Log in with `ssh damien@<the reserved address>`, using the `termius-rpi` or
@@ -129,7 +94,7 @@ land in the Nix store, readable by every user and pushed to the cache.
 
    ```sh
    systemctl status wireguard-wg0    # the VPN is up
-   su -c 'wg show wg0'               # the old clients are there, and connect
+   su -c 'wg show wg0'               # its clients are there, and connect
    ```
 
 If the card booted before the key was on it, the Pi made a new host key and
@@ -203,7 +168,7 @@ come up: see [About the automatic upgrades](automatic-upgrades.md). It has no
 boot menu.
 
 If it does not boot at all, write the card again from a commit that booted:
-check it out and follow [step 5](#5-write-the-card). The Pi comes back as the
+check it out and follow [step 3](#3-write-the-card). The Pi comes back as the
 same machine. Then repair `main` before the next morning. Until you do, the Pi
 upgrades to the same system again.
 
@@ -244,17 +209,16 @@ VPN server `wireguard-<name>`. For another VPN server:
 3. Add the key's public half to `.sops.yaml`, with a rule for
    `secrets/<name>.yaml` anchored like the others:
    `op read "op://<vault>/<name>/public_key" | ssh-to-age`.
-4. Write `secrets/<name>.yaml` as in step 2 above, then
+4. Write `secrets/<name>.yaml` as in step 1 above, then
    `git add .sops.yaml secrets/<name>.yaml`. The host does not build without
    the passwords.
 5. Give it a VPN. The copied `hosts/<name>/wireguard.json` holds `rpizh`'s
    server and clients: replace its content with `{"peers": {}}`, then:
 
    ```sh
-   nix run .#wireguard-<name> -- init      # a new server, or
-   nix run .#wireguard-<name> -- import wg0.conf
+   nix run .#wireguard-<name> -- init
    ```
 
-6. Follow steps 4 to 6 above with `<name>` for `rpizh`.
+6. Follow steps 2 to 4 above with `<name>` for `rpizh`.
 7. Forward the VPN's port on its router, and
    [add its clients](vpn-clients.md).

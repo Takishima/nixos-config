@@ -11,27 +11,7 @@ let
   keys = import "${pkgs.path}/nixos/tests/wireguard/snakeoil-keys.nix";
   phoneKey = lib.trim keys.peer1.publicKey;
 
-  # As PiVPN writes it.
-  oldServer = pkgs.writeText "wg0.conf" ''
-    [Interface]
-    PrivateKey = ${keys.peer0.privateKey}
-    Address = 10.6.0.1/24
-    MTU = 1420
-    ListenPort = 51820
-    ### begin phone ###
-    [Peer]
-    PublicKey = ${phoneKey}
-    PresharedKey = ${keys.presharedKey}
-    AllowedIPs = 10.6.0.2/32
-    ### end phone ###
-    #[disabled] ### begin old laptop ###
-    #[disabled] [Peer]
-    #[disabled] PublicKey = xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=
-    #[disabled] AllowedIPs = 10.6.0.5/32
-    #[disabled] ### end old laptop ###
-  '';
-
-  imported = {
+  declared = {
     publicKey = keys.peer0.publicKey;
     peers = {
       phone = {
@@ -109,7 +89,7 @@ in
             dns = [ "10.6.0.1" ];
             allowedIPs = [ "10.6.0.0/24" ];
             peers = lib.mkMerge [
-              imported.peers
+              declared.peers
               { phone.localNetwork = true; }
             ];
           };
@@ -232,29 +212,10 @@ in
       def state(name, query):
           return server.succeed(f"jq -c '{query}' /root/{name}/hosts/testpi/wireguard.json").strip()
 
-      with subtest("wireguard-testpi imports an old server as the module has it"):
-          admin = checkout("repo")
-          for path in ["wireguard/private_key", "wireguard/psk"]:
-              server.succeed(sops("repo", "unset", path))
-          server.succeed(
-              f"{admin} import ${oldServer}",
-              "jq -S . ${pkgs.writeText "imported.json" (builtins.toJSON imported)} | cmp - /root/repo/hosts/testpi/wireguard.json",
-          )
-          private = secret("repo", "wireguard/private_key")
-          assert private == "${keys.peer0.privateKey}", private
-          psk = secret("repo", "wireguard/psk/phone")
-          assert psk == "${keys.presharedKey}", psk
-          server.fail(f"{admin} import ${oldServer}")
-
-      with subtest("from a tar of /etc/wireguard too"):
-          other = checkout("other")
-          server.succeed(
-              "mkdir -p /tmp/wireguard && cp ${oldServer} /tmp/wireguard/wg0.conf",
-              # As `tar czf wireguard.tgz /etc/wireguard` stores it, under a directory.
-              "tar czf /tmp/wireguard.tgz -C / tmp/wireguard",
-              f"{other} import /tmp/wireguard.tgz",
-              "cmp /root/other/hosts/testpi/wireguard.json /root/repo/hosts/testpi/wireguard.json",
-          )
+      admin = checkout("repo")
+      server.succeed(
+          "jq -S . ${pkgs.writeText "wireguard.json" (builtins.toJSON declared)} > /root/repo/hosts/testpi/wireguard.json"
+      )
 
       with subtest("a new client gets the next free address, a preshared key and a configuration"):
           server.succeed(f"{admin} add tablet --endpoint vpn.example.org -o /root/tablet.conf")
